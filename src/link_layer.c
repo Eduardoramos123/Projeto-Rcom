@@ -26,6 +26,7 @@
 #define UA (0x07)
 #define A_EMISSOR (0x03)
 #define A_RECETOR (0x01)
+#define DISC (0x0B)
 
 
 volatile int STOP = FALSE;
@@ -114,43 +115,63 @@ unsigned char read_noncanonical(char *port, unsigned int size)
     
 
     if (trama[0] == FLAG && trama[size - 1] == FLAG) {
-    	if (checksum(trama, 4) == 0) {
-		    if (trama[1] == A_RECETOR && trama[2] == UA) {
-		        
+        if (size != 5) {
+            if (checksum(trama, 4) == 0) {
+                if (trama[1] == A_EMISSOR) {
+                    unsigned char buf[sizeof(trama) - 5];
+                    int it = 0;
+                    for (int i = 4; i < sizeof(trama) - 1; i++) {
+                        buf[it] = trama[i];
+                        it++;
+                    } 
+                    
+                    if (checksum(buf, sizeof(buf)) == 0) {
+                        if (tcsetattr(fd, TCSANOW, &oldtio) == -1)
+                        {
+                            perror("tcsetattr");
+                            exit(-1);
+                        }
 
-		        if (tcsetattr(fd, TCSANOW, &oldtio) == -1)
-		        {
-		            perror("tcsetattr");
-		            exit(-1);
-		        }
+                        close(fd);
 
-		        close(fd);
+                        return 0;
+                    }
 
-		        return 0;
-
+                }  
 		    }
-            else if (trama[1] == A_EMISSOR) {
-                unsigned char buf[sizeof(trama) - 5];
-                int it = 0;
-                for (int i = 4; i < sizeof(trama) - 1; i++) {
-                    buf[it] = trama[i];
-                    it++;
-                } 
-		        
-                if (checksum(buf, sizeof(buf)) == 0) {
+        }
+        else {
+            if (checksum(trama, 5) == 0) {
+                if (trama[1] == A_RECETOR && trama[2] == UA) {
+
                     if (tcsetattr(fd, TCSANOW, &oldtio) == -1)
-		            {
-		                perror("tcsetattr");
-		                exit(-1);
-		            }
+                    {
+                        perror("tcsetattr");
+                        exit(-1);
+                    }
 
-		            close(fd);
+                    close(fd);
 
-		            return trama;
-                }
+                    return 0;
 
-		    }  
-		}
+                } 
+                else if (trama[1] == A_EMISSOR && trama[2] == DISC) {
+
+                    if (tcsetattr(fd, TCSANOW, &oldtio) == -1)
+                    {
+                        perror("tcsetattr");
+                        exit(-1);
+                    }
+
+                    close(fd);
+
+                    return 0;
+
+                } 
+            }
+            
+        }
+    	
     }
 
 
@@ -407,7 +428,34 @@ int llread(unsigned char *packet)
 ////////////////////////////////////////////////
 int llclose(int showStatistics)
 {
-    // TODO
+    struct sigaction action;
+    memset(&action, 0, sizeof(action));
+    action.sa_handler = alarmHandler;
+    sigaction(SIGALRM,&action,NULL);
+    
+    global_port = connectionParameters.serialPort;
+    global_var = connectionParameters;
 
-    return 1;
+    unsigned char trama[5];
+    trama[0] = FLAG;
+    trama[4] = FLAG;
+    trama[1] = A_EMISSOR;
+    trama[2] = DISC;
+    trama[3] = 0x00; //checksum po Lab3
+    trama[3] = checksum(trama, 5); // pode correr mal
+    last_trama = trama;
+
+    int check = 1;
+    while (check == 1) {
+	if (alarmEnabled == FALSE) {
+		alarmEnabled = TRUE;
+		write_noncanoical(global_port, trama);
+		alarm(3);
+		//sleep(1);
+		check = read_noncanonical(global_port, 5);
+	}
+    }
+    alarm(0);
+
+    return 0;
 }
