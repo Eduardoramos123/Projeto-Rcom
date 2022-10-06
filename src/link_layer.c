@@ -337,7 +337,7 @@ unsigned char* stuff_bytes(const unsigned char *buf, int bufSize) {
         it++;
     }
 
-    unsigned char res[it];
+    unsigned char res = malloc(sizeof(char) * it);
 
     for (int i = 0; i < it; i++) {
         res[i] = stuff[i];
