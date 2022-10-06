@@ -491,7 +491,7 @@ int main(int argc, char *argv[])
         int check = 0;
         unsigned char* res = malloc(sizeof(char) * 4000);
         while (check == 0) {
-            check = llread(res, serialPort);
+            check = llread(res, argv[1]);
         }
     }
 
