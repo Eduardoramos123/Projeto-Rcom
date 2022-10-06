@@ -42,7 +42,7 @@ unsigned char checksum (unsigned char *trama, size_t sz) {
 	return res;
 }
 
-unsigned char* global_port;
+char* global_port;
 
 int alarmEnabled = FALSE;
 
@@ -311,7 +311,7 @@ int llopen(LinkLayer connectionParameters)
     while (check == 1) {
 	if (alarmEnabled == FALSE) {
 		alarmEnabled = TRUE;
-		write_noncanoical(global_port, trama);
+		write_noncanoical(global_port, trama, sizeof(trama));
 		alarm(3);
 		//sleep(1);
 		check = read_noncanonical(global_port, 5, res);
@@ -329,9 +329,9 @@ unsigned char* stuff_bytes(const unsigned char *buf, int bufSize) {
     int it = 0;
 
     for (int i = 0; i < bufSize; i++) {
-        stuff[it] == buf[i];  
+        stuff[it] = buf[i];  
         if (buf[i] == FLAG) {
-            stuff[it + 1] == 0x5d;
+            stuff[it + 1] = 0x5d;
             it++;
         }
         it++;
@@ -343,7 +343,7 @@ unsigned char* stuff_bytes(const unsigned char *buf, int bufSize) {
         res[i] = stuff[i];
     }
 
-    return res;
+    return *res;
 }
 
 
@@ -358,17 +358,6 @@ int llwrite(const unsigned char *buf, int bufSize)
     memset(&action, 0, sizeof(action));
     action.sa_handler = alarmHandler;
     sigaction(SIGALRM,&action,NULL);
-
-
-    unsigned char* buf_stuffed = stuff_bytes(buf, bufSize);
-    size_t n = sizeof(buf_stuffed) + 6;
-
-    unsigned char trama[5];
-    trama[0] = FLAG;
-    trama[4] = FLAG;
-    trama[1] = A_EMISSOR;
-    trama[2] = SET;
-    last_trama = trama;
 
     unsigned char* buf_stuffed = stuff_bytes(buf, bufSize);
     size_t n = sizeof(buf_stuffed) + 6;
@@ -394,7 +383,7 @@ int llwrite(const unsigned char *buf, int bufSize)
     while (check == 1) {
         if (alarmEnabled == FALSE) {
             alarmEnabled = TRUE;
-            write_noncanoical(global_port, trama);
+            write_noncanoical(global_port, trama, sizeof(trama));
             alarm(3);
             //sleep(1);
             check = read_noncanonical(global_port, 5, res);
@@ -430,7 +419,7 @@ int llread(unsigned char *packet, char *port)
 	trama_envio[3] = 0x00;
 	trama_envio[3] = checksum(trama_envio, 5);
 
-    write_noncanoical(port, trama_envio);   
+    write_noncanoical(port, trama_envio, sizeof(trama_envio));   
 
     if (check == 2) {
         return 1;
@@ -467,7 +456,7 @@ int llclose(int showStatistics)
     while (check == 1) {
 	if (alarmEnabled == FALSE) {
 		alarmEnabled = TRUE;
-		write_noncanoical(global_port, trama);
+		write_noncanoical(global_port, trama, sizeof(trama));
 		alarm(3);
 		//sleep(1);
 		check = read_noncanonical(global_port, 5, res);
