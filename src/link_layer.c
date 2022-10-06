@@ -107,7 +107,7 @@ unsigned char read_noncanonical(char *port, unsigned int size, unsigned char* re
     // Loop for input
     unsigned char *trama = malloc(sizeof(char) * size); // +1: Save space for the final '\0' char
 
-    int bytes = read(fd, trama, size);
+    read(fd, trama, size);
     
     printf("%d\n", size);
     	
@@ -254,7 +254,7 @@ int write_noncanoical(char *port, unsigned char* trama, unsigned int size)
 
 
 
-    int bytes = write(fd, trama, size);
+    write(fd, trama, size);
     
     for (int i = 0; i < size; i++) {
     	printf("%x", trama[i]);
@@ -305,7 +305,7 @@ int llopen(LinkLayer connectionParameters)
     trama[3] = checksum(trama, 4); // pode correr mal
     last_trama = trama;
 
-    unsigned char* res;
+    unsigned char* res = malloc(sizeof(char) * 5);
 
     int check = 1;
     while (check == 1) {
@@ -343,7 +343,7 @@ unsigned char* stuff_bytes(const unsigned char *buf, int bufSize) {
         res[i] = stuff[i];
     }
 
-    return *res;
+    return res;
 }
 
 
@@ -377,7 +377,7 @@ int llwrite(const unsigned char *buf, int bufSize)
         it++;
     }
 
-    unsigned char* res;
+    unsigned char* res = malloc(sizeof(char) * 5);
 
     int check = 1;
     while (check == 1) {
@@ -400,7 +400,7 @@ int llwrite(const unsigned char *buf, int bufSize)
 ////////////////////////////////////////////////
 int llread(unsigned char *packet, char *port)
 {
-    unsigned char* res;
+    unsigned char* res = malloc(sizeof(char) * 4000);
     int check = read_noncanonical(port, 4000, res);
 
     if (check == 1) {
@@ -448,7 +448,7 @@ int llclose(int showStatistics)
     trama[3] = checksum(trama, 5); // pode correr mal
     last_trama = trama;
 
-    unsigned char* res;
+    unsigned char* res = malloc(sizeof(char) * 5);
 
     int check = 1;
     while (check == 1) {
