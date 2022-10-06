@@ -13,7 +13,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
     connectionParameters.baudRate = baudRate;
     connectionParameters.nRetransmissions = nTries;
     connectionParameters.timeout = timeout;
-    connectionParameters.serialPort = serialPort;
+    strcpy(connectionParameters.serialPort, serialPort);
 
     char str1[] = "tx";
     if (strcmp(role, str1) == 0) {

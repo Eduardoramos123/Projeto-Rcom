@@ -49,7 +49,7 @@ int alarmEnabled = FALSE;
 LinkLayer global_var;
 
 
-unsigned char read_noncanonical(char *port, unsigned int size, unsigned char* res)
+unsigned char read_noncanonical(const char *port, unsigned int size, unsigned char* res)
 {
     // Program usage: Uses either COM1 or COM2
     const char *serialPortName = port;
