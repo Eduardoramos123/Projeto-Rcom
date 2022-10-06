@@ -398,7 +398,7 @@ int llwrite(const unsigned char *buf, int bufSize)
 ////////////////////////////////////////////////
 // LLREAD
 ////////////////////////////////////////////////
-int llread(unsigned char *packet, char *port)
+int llread(unsigned char *packet, const char *port)
 {
     unsigned char* res = malloc(sizeof(char) * 4000);
     int check = read_noncanonical(port, 4000, res);

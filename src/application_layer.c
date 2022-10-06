@@ -1,13 +1,14 @@
 // Application layer protocol implementation
 
 #include <string.h>
+#include <stdlib.h>
 #include "application_layer.h"
 #include "link_layer.h"
 
 void applicationLayer(const char *serialPort, const char *role, int baudRate, int nTries, int timeout, const char *filename)
 {
     LinkLayer connectionParameters;
-    LinkLayerRole role;
+    LinkLayerRole r;
 
     connectionParameters.baudRate = baudRate;
     connectionParameters.nRetransmissions = nTries;
@@ -16,15 +17,15 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
 
     char str1[] = "tx";
     if (strcmp(role, str1) == 0) {
-        role = LlTx;
+        r = LlTx;
     }
     else {
-        role = LlRx;
+        r = LlRx;
     }
 
-    connectionParameters.role = role;
+    connectionParameters.role = r;
 
-    if (role == LlTx) {
+    if (r == LlTx) {
 
         llopen(connectionParameters);
     }
