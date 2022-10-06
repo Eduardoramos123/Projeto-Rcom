@@ -438,8 +438,6 @@ int llclose(int showStatistics)
     action.sa_handler = alarmHandler;
     sigaction(SIGALRM,&action,NULL);
     
-    global_port = connectionParameters.serialPort;
-    global_var = connectionParameters;
 
     unsigned char trama[5];
     trama[0] = FLAG;
