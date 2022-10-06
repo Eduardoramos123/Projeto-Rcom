@@ -49,7 +49,7 @@ int alarmEnabled = FALSE;
 LinkLayer global_var;
 
 
-unsigned char read_noncanonical(char *port, unsigned int size)
+unsigned char read_noncanonical(char *port, unsigned int size, unsigned char* res)
 {
     // Program usage: Uses either COM1 or COM2
     const char *serialPortName = port;
@@ -133,6 +133,7 @@ unsigned char read_noncanonical(char *port, unsigned int size)
                         }
 
                         close(fd);
+                        *res = *trama;
 
                         return 0;
                     }
@@ -165,7 +166,7 @@ unsigned char read_noncanonical(char *port, unsigned int size)
 
                     close(fd);
 
-                    return 0;
+                    return 2;
 
                 } 
             }
@@ -304,6 +305,8 @@ int llopen(LinkLayer connectionParameters)
     trama[3] = checksum(trama, 4); // pode correr mal
     last_trama = trama;
 
+    unsigned char* res;
+
     int check = 1;
     while (check == 1) {
 	if (alarmEnabled == FALSE) {
@@ -311,7 +314,7 @@ int llopen(LinkLayer connectionParameters)
 		write_noncanoical(global_port, trama);
 		alarm(3);
 		//sleep(1);
-		check = read_noncanonical(global_port, 5);
+		check = read_noncanonical(global_port, 5, res);
 	}
     }
     alarm(0);
@@ -385,6 +388,8 @@ int llwrite(const unsigned char *buf, int bufSize)
         it++;
     }
 
+    unsigned char* res;
+
     int check = 1;
     while (check == 1) {
         if (alarmEnabled == FALSE) {
@@ -392,7 +397,7 @@ int llwrite(const unsigned char *buf, int bufSize)
             write_noncanoical(global_port, trama);
             alarm(3);
             //sleep(1);
-            check = read_noncanonical(global_port, 5);
+            check = read_noncanonical(global_port, 5, res);
         }
     }
     alarm(0); 
@@ -404,11 +409,18 @@ int llwrite(const unsigned char *buf, int bufSize)
 ////////////////////////////////////////////////
 // LLREAD
 ////////////////////////////////////////////////
-int llread(unsigned char *packet)
+int llread(unsigned char *packet, char *port)
 {
-    *packet = read_noncanonical(global_port, 4000);
+    unsigned char* res;
+    int check = read_noncanonical(port, 4000, res);
 
+    if (check == 1) {
+        printf("llread deu mal\n");
+        return 0;
+    }
+    
 
+    *packet = *res;
 
     unsigned char trama_envio[5];
     trama_envio[0] = FLAG;
@@ -418,7 +430,11 @@ int llread(unsigned char *packet)
 	trama_envio[3] = 0x00;
 	trama_envio[3] = checksum(trama_envio, 5);
 
-    write_noncanoical(global_port, trama_envio);   
+    write_noncanoical(port, trama_envio);   
+
+    if (check == 2) {
+        return 1;
+    }
 
     return 0;
 }
@@ -445,6 +461,8 @@ int llclose(int showStatistics)
     trama[3] = checksum(trama, 5); // pode correr mal
     last_trama = trama;
 
+    unsigned char* res;
+
     int check = 1;
     while (check == 1) {
 	if (alarmEnabled == FALSE) {
@@ -452,7 +470,7 @@ int llclose(int showStatistics)
 		write_noncanoical(global_port, trama);
 		alarm(3);
 		//sleep(1);
-		check = read_noncanonical(global_port, 5);
+		check = read_noncanonical(global_port, 5, res);
 	}
     }
     alarm(0);
