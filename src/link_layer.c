@@ -193,7 +193,7 @@ unsigned char read_noncanonical(const char *port, unsigned int size, unsigned ch
     return 1;
 }
 
-int write_noncanoical(char *port, unsigned char* trama, unsigned int size)
+int write_noncanoical(const char *port, unsigned char* trama, unsigned int size)
 {
     // Program usage: Uses either COM1 or COM2
     const char *serialPortName = port;
