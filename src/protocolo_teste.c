@@ -105,17 +105,34 @@ unsigned char read_noncanonical(const char *port, unsigned int size, unsigned ch
     printf("New termios structure set\n");
 
     // Loop for input
-    unsigned char *trama = malloc(sizeof(char) * size); // +1: Save space for the final '\0' char
+    unsigned char *old_trama = malloc(sizeof(char) * size); // +1: Save space for the final '\0' char
 
-    read(fd, trama, size);
+    read(fd, old_trama, size);
     
+    int iter = 1;
+    for (int i = 1; i < size; i++) {
+    	if (old_trama[i] == FLAG && old_trama[i + 1] != 0x5d && old_trama[i + 1] != FLAG) {
+    		break;
+    	}
+    	iter++;
+    }
+    
+    unsigned char *trama = malloc(sizeof(char) * iter);
+    
+    for (int i = 0; i <= iter; i++) {
+    	trama[i] = old_trama[i];
+    } 
+    for (int i = 0; i < iter + 1; i++) {
+    	printf("%x", trama[i]);
+    }
+    printf("\n");
     printf("%d\n", size);
     	
-
+    int new_size = iter + 1;
     
 
-    if (trama[0] == FLAG && trama[size - 1] == FLAG) {
-        if (size != 5) {
+    if (trama[0] == FLAG && trama[new_size - 1] == FLAG) {
+        if (new_size != 5) {
             if (checksum(trama, 4) == 0) {
                 if (trama[1] == A_EMISSOR) {
                     unsigned char buf[sizeof(trama) - 5];
@@ -142,6 +159,7 @@ unsigned char read_noncanonical(const char *port, unsigned int size, unsigned ch
 		    }
         }
         else {
+            printf("checksum: %x\n", checksum(trama, 5));
             if (checksum(trama, 5) == 0) {
                 if (trama[1] == A_RECETOR && trama[2] == UA) {
 
@@ -168,7 +186,18 @@ unsigned char read_noncanonical(const char *port, unsigned int size, unsigned ch
 
                     return 2;
 
-                } 
+                }
+                else if (trama[1] == A_EMISSOR && trama[2] == SET) {
+                    if (tcsetattr(fd, TCSANOW, &oldtio) == -1)
+                    {
+                        perror("tcsetattr");
+                        exit(-1);
+                    }
+
+                    close(fd);
+
+                    return 0;
+               } 
             }
             
         }
@@ -302,7 +331,7 @@ int llopen(LinkLayer connectionParameters)
     trama[1] = A_EMISSOR;
     trama[2] = SET;
     trama[3] = 0x00; //checksum po Lab3
-    trama[3] = checksum(trama, 4); // pode correr mal
+    trama[3] = checksum(trama, 5); // pode correr mal
     last_trama = trama;
 
     unsigned char* res = malloc(sizeof(char) * 5);
@@ -413,13 +442,14 @@ int llread(unsigned char *packet, const char *port)
 
     unsigned char trama_envio[5];
     trama_envio[0] = FLAG;
-	trama_envio[4] = FLAG;
-	trama_envio[1] = A_RECETOR;
-	trama_envio[2] = UA;
-	trama_envio[3] = 0x00;
-	trama_envio[3] = checksum(trama_envio, 5);
+    trama_envio[4] = FLAG;
+    trama_envio[1] = A_RECETOR;
+    trama_envio[2] = UA;
+    trama_envio[3] = 0x00;
+    trama_envio[3] = checksum(trama_envio, 5);
+    
 
-    write_noncanoical(port, trama_envio, sizeof(trama_envio));   
+    write_noncanoical(port, trama_envio, 5);   
 
     if (check == 2) {
         return 1;
@@ -454,7 +484,7 @@ int llclose(int showStatistics)
     while (check == 1) {
 	if (alarmEnabled == FALSE) {
 		alarmEnabled = TRUE;
-		write_noncanoical(global_port, trama, sizeof(trama));
+		write_noncanoical(global_port, trama, 5);
 		alarm(3);
 		//sleep(1);
 		check = read_noncanonical(global_port, 5, res);
