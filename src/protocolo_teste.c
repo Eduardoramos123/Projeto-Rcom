@@ -48,6 +48,8 @@ int alarmEnabled = FALSE;
 
 LinkLayer global_var;
 
+int fd;
+
 
 unsigned char read_noncanonical(const char *port, unsigned int size, unsigned char* res)
 {
@@ -56,7 +58,7 @@ unsigned char read_noncanonical(const char *port, unsigned int size, unsigned ch
 
     // Open serial port device for reading and writing and not as controlling tty
     // because we don't want to get killed if linenoise sends CTRL-C.
-    int fd = open(serialPortName, O_RDWR | O_NOCTTY);
+    //int fd = open(serialPortName, O_RDWR | O_NOCTTY);
     if (fd < 0)
     {
         perror(serialPortName);
@@ -107,7 +109,10 @@ unsigned char read_noncanonical(const char *port, unsigned int size, unsigned ch
     // Loop for input
     unsigned char *old_trama = malloc(sizeof(char) * size); // +1: Save space for the final '\0' char
 
-    read(fd, old_trama, size);
+    
+    int bytes = read(fd, old_trama, size);
+    
+    printf("bytes read: %d\n", bytes);
     
     int iter = 1;
     for (int i = 1; i < size; i++) {
@@ -149,7 +154,7 @@ unsigned char read_noncanonical(const char *port, unsigned int size, unsigned ch
                             exit(-1);
                         }
 
-                        close(fd);
+                        //close(fd);
                         *res = *trama;
 
                         return 0;
@@ -169,7 +174,7 @@ unsigned char read_noncanonical(const char *port, unsigned int size, unsigned ch
                         exit(-1);
                     }
 
-                    close(fd);
+                    //close(fd);
 
                     return 0;
 
@@ -182,7 +187,7 @@ unsigned char read_noncanonical(const char *port, unsigned int size, unsigned ch
                         exit(-1);
                     }
 
-                    close(fd);
+                    //close(fd);
 
                     return 2;
 
@@ -194,7 +199,7 @@ unsigned char read_noncanonical(const char *port, unsigned int size, unsigned ch
                         exit(-1);
                     }
 
-                    close(fd);
+                    //close(fd);
 
                     return 0;
                } 
@@ -216,7 +221,7 @@ unsigned char read_noncanonical(const char *port, unsigned int size, unsigned ch
         exit(-1);
     }
 
-    close(fd);
+    //close(fd);
 
 
     return 1;
@@ -229,7 +234,7 @@ int write_noncanoical(const char *port, unsigned char* trama, unsigned int size)
 
     // Open serial port device for reading and writing, and not as controlling tty
     // because we don't want to get killed if linenoise sends CTRL-C.
-    int fd = open(serialPortName, O_RDWR | O_NOCTTY);
+    //int fd = open(serialPortName, O_RDWR | O_NOCTTY);
 
     if (fd < 0)
     {
@@ -283,7 +288,10 @@ int write_noncanoical(const char *port, unsigned char* trama, unsigned int size)
 
 
 
-    write(fd, trama, size);
+    int bytes = write(fd, trama, size);
+    
+    printf("bytes writen: %d\n", bytes);
+    
     
     for (int i = 0; i < size; i++) {
     	printf("%x", trama[i]);
@@ -301,7 +309,7 @@ int write_noncanoical(const char *port, unsigned char* trama, unsigned int size)
         exit(-1);
     }
 
-    close(fd);
+    //close(fd);
 
     return 0;
 }
@@ -505,6 +513,8 @@ int main(int argc, char *argv[])
     connectionParameters.timeout = 0;
     strcpy(connectionParameters.serialPort, argv[1]);
 
+    fd = open(argv[1], O_RDWR | O_NOCTTY);
+
     char str1[] = "tx";
     if (strcmp(argv[2], str1) == 0) {
         r = LlTx;
@@ -524,6 +534,8 @@ int main(int argc, char *argv[])
             check = llread(res, argv[1]);
         }
     }
+    
+    close(fd);
 
     return 0;
 }
