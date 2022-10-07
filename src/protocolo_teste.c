@@ -110,7 +110,10 @@ unsigned char read_noncanonical(const char *port, unsigned int size, unsigned ch
     unsigned char *old_trama = malloc(sizeof(char) * size); // +1: Save space for the final '\0' char
 
     
-    int bytes = read(fd, old_trama, size);
+    int	bytes = read(fd, old_trama, size);
+    
+    
+    
     
     printf("bytes read: %d\n", bytes);
     
@@ -456,7 +459,7 @@ int llread(unsigned char *packet, const char *port)
     trama_envio[3] = 0x00;
     trama_envio[3] = checksum(trama_envio, 5);
     
-
+    sleep(1);
     write_noncanoical(port, trama_envio, 5);   
 
     if (check == 2) {
