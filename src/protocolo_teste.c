@@ -239,6 +239,7 @@ int write_noncanoical(const char *port, unsigned char* trama, unsigned int size)
     // because we don't want to get killed if linenoise sends CTRL-C.
     //int fd = open(serialPortName, O_RDWR | O_NOCTTY);
 
+    
     if (fd < 0)
     {
         perror(serialPortName);
@@ -358,6 +359,7 @@ int llopen(LinkLayer connectionParameters)
 	}
     }
     alarm(0);
+    alarmEnabled = FALSE;
     printf("Connection established!\n");
 
     return 0;
@@ -430,7 +432,8 @@ int llwrite(const unsigned char *buf, int bufSize)
         }
     }
     alarm(0); 
-
+    alarmEnabled = FALSE;
+    
     return 0;
 }
 
@@ -490,7 +493,7 @@ int llclose(int showStatistics)
     last_trama = trama;
 
     unsigned char* res = malloc(sizeof(char) * 5);
-
+  
     int check = 1;
     while (check == 1) {
 	if (alarmEnabled == FALSE) {
@@ -502,6 +505,8 @@ int llclose(int showStatistics)
 	}
     }
     alarm(0);
+    alarmEnabled = FALSE;
+    printf("Connection CLOSED!\n");
 
     return 0;
 }
@@ -529,6 +534,7 @@ int main(int argc, char *argv[])
     if (r == LlTx) {
 
         llopen(connectionParameters);
+        llclose(0);
     }
     else {
         int check = 0;
