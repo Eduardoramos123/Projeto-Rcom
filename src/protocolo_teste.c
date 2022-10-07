@@ -534,6 +534,7 @@ int main(int argc, char *argv[])
     if (r == LlTx) {
 
         llopen(connectionParameters);
+        sleep(1);
         llclose(0);
     }
     else {
