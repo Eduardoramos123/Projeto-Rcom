@@ -204,7 +204,7 @@ unsigned char read_noncanonical(const char *port, unsigned int size, unsigned ch
 
                     //close(fd);
 
-                    return 0;
+                    return 3;
                } 
             }
             
@@ -437,6 +437,30 @@ int llwrite(const unsigned char *buf, int bufSize)
     return 0;
 }
 
+unsigned char* destuff_bytes(const unsigned char *buf, int bufSize) {
+    unsigned char stuff[bufSize];
+    int it = 0;
+
+    for (int i = 0; i < bufSize; i++) {
+        if (buf[i] != FLAG) {
+            stuff[it] = buf[i];
+        }
+        else {
+            stuff[it] = buf[i];
+            i++;
+        }
+        it++;
+    }
+
+    unsigned char *res = malloc(sizeof(char) * it);
+
+    for (int i = 0; i < it; i++) {
+        res[i] = stuff[i];
+    }
+
+    return res;
+}
+
 
 ////////////////////////////////////////////////
 // LLREAD
@@ -452,8 +476,6 @@ int llread(unsigned char *packet, const char *port)
     }
     
 
-    *packet = *res;
-
     unsigned char trama_envio[5];
     trama_envio[0] = FLAG;
     trama_envio[4] = FLAG;
@@ -468,6 +490,21 @@ int llread(unsigned char *packet, const char *port)
     if (check == 2) {
         return 1;
     }
+    if else (check == 3) {
+        return 3;
+    }
+
+    unsigned char buf[sizeof(res) - 5];
+    int it = 0;
+    for (int i = 4; i < sizeof(res) - 1; i++) {
+        buf[it] = res[i];
+        it++;
+    }
+
+    unsigned char* content = destuff_bytes(buf, it); 
+    
+    *packet = *content;
+
 
     return 0;
 }
@@ -535,6 +572,24 @@ int main(int argc, char *argv[])
 
         llopen(connectionParameters);
         sleep(1);
+
+        unsigned char* res = malloc(sizeof(char) * 5);
+        res[0] = 0x71;
+        res[1] = 0xA2;
+        res[3] = 0x23;
+        res[4] = 0x31;
+        res[5] = 0x11;
+
+        printf("SENDING: ")
+        for (int i = 0; i < 5; i++) {
+            printf("%x", res[i]);
+        }
+        printf("\n");
+
+        llwrite(res, 5);
+        sleep(1);
+
+
         llclose(0);
     }
     else {
@@ -542,6 +597,16 @@ int main(int argc, char *argv[])
         unsigned char* res = malloc(sizeof(char) * 4000);
         while (check == 0) {
             check = llread(res, argv[1]);
+            if (check == 3) {
+                check = 0;
+            }
+            else {
+                printf("RECEIVED: ")
+                for (int i = 0; i < 5; i++) {
+                    printf("%x", res[i]);
+                }
+                printf("\n");
+            }
         }
     }
     
