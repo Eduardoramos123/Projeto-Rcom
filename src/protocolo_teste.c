@@ -200,6 +200,19 @@ unsigned char read_noncanonical(const char *port, unsigned int size, unsigned ch
                     return 2;
 
                 }
+                else if (trama[1] == A_RECETOR && trama[2] == DISC) {
+
+                    if (tcsetattr(fd, TCSANOW, &oldtio) == -1)
+                    {
+                        perror("tcsetattr");
+                        exit(-1);
+                    }
+
+                    //close(fd);
+
+                    return 0;
+
+                }
                 else if (trama[1] == A_EMISSOR && trama[2] == SET) {
                     if (tcsetattr(fd, TCSANOW, &oldtio) == -1)
                     {
@@ -210,7 +223,18 @@ unsigned char read_noncanonical(const char *port, unsigned int size, unsigned ch
                     //close(fd);
 
                     return 3;
-               } 
+               }
+               else if (trama[1] == A_EMISSOR && trama[2] == UA) {
+                    if (tcsetattr(fd, TCSANOW, &oldtio) == -1)
+                    {
+                        perror("tcsetattr");
+                        exit(-1);
+                    }
+
+                    //close(fd);
+
+                    return 3;
+               }  
             }
             
         }
@@ -503,9 +527,19 @@ int llread(unsigned char *packet, const char *port)
     trama_envio[2] = UA;
     trama_envio[3] = 0x00;
     trama_envio[3] = checksum(trama_envio, 5);
+        
+    
+    if (check == 2) {
+        trama_envio[2] = DISC;
+        trama_envio[3] = 0x00;
+        trama_envio[3] = checksum(trama_envio, 5);
+    }
+    
     
     sleep(1);
-    write_noncanoical(port, trama_envio, 5);   
+    write_noncanoical(port, trama_envio, 5); 
+    
+      
 
     if (check == 2) {
         return 1;
@@ -569,6 +603,19 @@ int llclose(int showStatistics)
     }
     alarm(0);
     alarmEnabled = FALSE;
+    
+    unsigned char envio_trama[5];
+    envio_trama[0] = FLAG;
+    envio_trama[4] = FLAG;
+    envio_trama[1] = A_EMISSOR;
+    envio_trama[2] = UA;
+    envio_trama[3] = 0x00; //checksum po Lab3
+    envio_trama[3] = checksum(envio_trama, 5); // pode correr mal
+    last_trama = envio_trama;
+    
+    
+    write_noncanoical(global_port, envio_trama, 5);
+    
     printf("Connection CLOSED!\n");
 
     return 0;
@@ -602,12 +649,12 @@ int main(int argc, char *argv[])
         unsigned char* res = malloc(sizeof(char) * 5);
         res[0] = 0x71;
         res[1] = FLAG;
-        res[2] = 0x23;
+        res[2] = 0x5d;
         res[3] = 0x31;
         res[4] = 0x11;
 
         printf("SENDING: ");
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < sizeof(res); i++) {
             printf("%x", res[i]);
         }
         printf("\n");
@@ -628,10 +675,13 @@ int main(int argc, char *argv[])
             }
             else if (check == 0) {
                 printf("RECEIVED: ");
-                for (int i = 0; i < 5; i++) {
+                for (int i = 0; i < total_bytes_read; i++) {
                     printf("%x", final_content[i]);
                 }
                 printf("\n");
+            }
+            else if (check == 2) {
+            	llread(res, argv[1]);
             }
         }
     }
