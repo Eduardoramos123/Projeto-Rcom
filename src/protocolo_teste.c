@@ -233,7 +233,7 @@ unsigned char read_noncanonical(const char *port, unsigned int size, unsigned ch
 
                     //close(fd);
 
-                    return 3;
+                    return 2;
                }  
             }
             
@@ -614,6 +614,7 @@ int llclose(int showStatistics)
     last_trama = envio_trama;
     
     
+    sleep(1);
     write_noncanoical(global_port, envio_trama, 5);
     
     printf("Connection CLOSED!\n");
@@ -680,7 +681,7 @@ int main(int argc, char *argv[])
                 }
                 printf("\n");
             }
-            else if (check == 2) {
+            else if (check == 1) {
             	llread(res, argv[1]);
             }
         }
