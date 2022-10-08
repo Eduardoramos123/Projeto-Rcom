@@ -32,6 +32,9 @@
 volatile int STOP = FALSE;
 
 unsigned char* last_trama;
+unsigned char* received_trama;
+int total_bytes_read;
+unsigned char* final_content;
 
 
 unsigned char checksum (unsigned char *trama, size_t sz) {
@@ -143,14 +146,14 @@ unsigned char read_noncanonical(const char *port, unsigned int size, unsigned ch
         if (new_size != 5) {
             if (checksum(trama, 4) == 0) {
                 if (trama[1] == A_EMISSOR) {
-                    unsigned char buf[sizeof(trama) - 5];
+                    unsigned char buf[bytes - 6];
                     int it = 0;
-                    for (int i = 4; i < sizeof(trama) - 1; i++) {
+                    for (int i = 4; i < bytes - 1; i++) {
                         buf[it] = trama[i];
                         it++;
-                    } 
+                    }
                     
-                    if (checksum(buf, sizeof(buf)) == 0) {
+                    if (checksum(buf, it) == 0) {
                         if (tcsetattr(fd, TCSANOW, &oldtio) == -1)
                         {
                             perror("tcsetattr");
@@ -158,7 +161,9 @@ unsigned char read_noncanonical(const char *port, unsigned int size, unsigned ch
                         }
 
                         //close(fd);
-                        *res = *trama;
+                        received_trama = trama;
+                        total_bytes_read = bytes;
+                        
 
                         return 0;
                     }
@@ -373,13 +378,13 @@ unsigned char* stuff_bytes(const unsigned char *buf, int bufSize) {
     for (int i = 0; i < bufSize; i++) {
         stuff[it] = buf[i];  
         if (buf[i] == FLAG) {
-            stuff[it + 1] = 0x5d;
             it++;
+            stuff[it] = 0x5d;
         }
         it++;
     }
 
-    unsigned char *res = malloc(sizeof(char) * it);
+    unsigned char* res = malloc(sizeof(char) * it);
 
     for (int i = 0; i < it; i++) {
         res[i] = stuff[i];
@@ -418,6 +423,21 @@ int llwrite(const unsigned char *buf, int bufSize)
         trama[i] = buf_stuffed[it];
         it++;
     }
+    
+    printf("TRAMA A ENVIAR: ");
+    for (int i = 0; i < sizeof(buf_stuffed); i++) {
+    	printf("%x", buf_stuffed[i]);
+    }
+    printf("\n");
+    printf("\n");
+    printf("\n");
+    
+    
+    printf("TRAMA A ENVIAR: ");
+    for (int i = 0; i < n; i++) {
+    	printf("%x", trama[i]);
+    }
+    printf("\n");
 
     unsigned char* res = malloc(sizeof(char) * 5);
 
@@ -490,20 +510,26 @@ int llread(unsigned char *packet, const char *port)
     if (check == 2) {
         return 1;
     }
-    if else (check == 3) {
+    else if (check == 3) {
         return 3;
     }
-
-    unsigned char buf[sizeof(res) - 5];
+   
+    unsigned char buf[total_bytes_read - 5];
     int it = 0;
-    for (int i = 4; i < sizeof(res) - 1; i++) {
-        buf[it] = res[i];
+    for (int i = 4; i < total_bytes_read - 2; i++) {
+        buf[it] = received_trama[i];
         it++;
     }
-
+    
+    printf("CONTENT: ");
+    for (int i = 0; i < it; i++) {
+    	printf("%x", buf[i]);
+    }
+    printf("\n");
+	
     unsigned char* content = destuff_bytes(buf, it); 
     
-    *packet = *content;
+    final_content = content;
 
 
     return 0;
@@ -575,12 +601,12 @@ int main(int argc, char *argv[])
 
         unsigned char* res = malloc(sizeof(char) * 5);
         res[0] = 0x71;
-        res[1] = 0xA2;
-        res[3] = 0x23;
-        res[4] = 0x31;
-        res[5] = 0x11;
+        res[1] = FLAG;
+        res[2] = 0x23;
+        res[3] = 0x31;
+        res[4] = 0x11;
 
-        printf("SENDING: ")
+        printf("SENDING: ");
         for (int i = 0; i < 5; i++) {
             printf("%x", res[i]);
         }
@@ -600,10 +626,10 @@ int main(int argc, char *argv[])
             if (check == 3) {
                 check = 0;
             }
-            else {
-                printf("RECEIVED: ")
+            else if (check == 0) {
+                printf("RECEIVED: ");
                 for (int i = 0; i < 5; i++) {
-                    printf("%x", res[i]);
+                    printf("%x", final_content[i]);
                 }
                 printf("\n");
             }
