@@ -35,6 +35,7 @@ unsigned char* last_trama;
 unsigned char* received_trama;
 int total_bytes_read;
 unsigned char* final_content;
+int stuffed_size;
 
 
 unsigned char checksum (unsigned char *trama, size_t sz) {
@@ -408,11 +409,14 @@ unsigned char* stuff_bytes(const unsigned char *buf, int bufSize) {
         it++;
     }
 
-    unsigned char* res = malloc(sizeof(char) * it);
+    unsigned char* res = malloc(sizeof(char) * it * 2);
+
 
     for (int i = 0; i < it; i++) {
         res[i] = stuff[i];
     }
+    
+    stuffed_size = it;
 
     return res;
 }
@@ -431,7 +435,7 @@ int llwrite(const unsigned char *buf, int bufSize)
     sigaction(SIGALRM,&action,NULL);
 
     unsigned char* buf_stuffed = stuff_bytes(buf, bufSize);
-    size_t n = sizeof(buf_stuffed) + 6;
+    size_t n = stuffed_size + 6;
 
     unsigned char trama[n];
     trama[0] = FLAG;
@@ -440,7 +444,7 @@ int llwrite(const unsigned char *buf, int bufSize)
     trama[3] = 0x00; //checksum po Lab3
     trama[3] = checksum(trama, 4); // pode correr mal
     trama[n - 1] = FLAG;
-    trama[n - 2] = checksum(buf_stuffed, sizeof(buf_stuffed));
+    trama[n - 2] = checksum(buf_stuffed, stuffed_size);
 
     int it = 0;
     for (int i = 4; i < n - 2; i++) {
@@ -449,7 +453,7 @@ int llwrite(const unsigned char *buf, int bufSize)
     }
     
     printf("TRAMA A ENVIAR: ");
-    for (int i = 0; i < sizeof(buf_stuffed); i++) {
+    for (int i = 0; i < stuffed_size; i++) {
     	printf("%x", buf_stuffed[i]);
     }
     printf("\n");
@@ -469,7 +473,7 @@ int llwrite(const unsigned char *buf, int bufSize)
     while (check == 1) {
         if (alarmEnabled == FALSE) {
             alarmEnabled = TRUE;
-            write_noncanoical(global_port, trama, sizeof(trama));
+            write_noncanoical(global_port, trama, n);
             alarm(3);
             //sleep(1);
             check = read_noncanonical(global_port, 5, res);
@@ -654,13 +658,33 @@ int main(int argc, char *argv[])
         res[3] = 0x31;
         res[4] = 0x11;
 
-        printf("SENDING: ");
+        printf("SENDING1: ");
         for (int i = 0; i < sizeof(res); i++) {
             printf("%x", res[i]);
         }
         printf("\n");
 
         llwrite(res, 5);
+        sleep(1);
+        
+        unsigned char* res2 = malloc(sizeof(char) * 10);
+        res2[0] = FLAG;
+        res2[1] = FLAG;
+        res2[2] = FLAG;
+        res2[3] = FLAG;
+        res2[4] = FLAG;
+        res2[5] = FLAG;
+        
+        
+        printf("SENDING2: ");
+        for (int i = 0; i < sizeof(res2); i++) {
+            printf("%x", res2[i]);
+        }
+        printf("\n");
+        
+        
+        
+        llwrite(res2, 10);
         sleep(1);
 
 
