@@ -684,7 +684,7 @@ int main(int argc, char *argv[])
         
         
         
-        llwrite(res2, 10);
+        llwrite(res2, 6);
         sleep(1);
 
 
