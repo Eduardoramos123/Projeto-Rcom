@@ -36,6 +36,27 @@ unsigned char* received_trama;
 int total_bytes_read;
 unsigned char* final_content;
 int stuffed_size;
+int seq_num;
+int arq_num;
+
+
+void switch_seq() {
+	if (seq_num == 1) {
+		seq_num = 0;
+	}
+	else {
+		seq_num = 1;
+	}
+}
+
+void switch_arq() {
+	if (arq_num == 1) {
+		arq_num = 0;
+	}
+	else {
+		arq_num = 1;
+	}
+}
 
 
 unsigned char checksum (unsigned char *trama, size_t sz) {
@@ -166,7 +187,7 @@ unsigned char read_noncanonical(const char *port, unsigned int size, unsigned ch
                         total_bytes_read = bytes;
                         
 
-                        return 0;
+                        return 5;
                     }
 
                 }  
@@ -174,6 +195,7 @@ unsigned char read_noncanonical(const char *port, unsigned int size, unsigned ch
         }
         else {
             printf("checksum: %x\n", checksum(trama, 5));
+            printf("trama[2]: %x\n", trama[2]);
             if (checksum(trama, 5) == 0) {
                 if (trama[1] == A_RECETOR && trama[2] == UA) {
 
@@ -236,6 +258,21 @@ unsigned char read_noncanonical(const char *port, unsigned int size, unsigned ch
 
                     return 2;
                }  
+               else if (trama[1] == A_RECETOR && (trama[2] == 0x85 || trama[2] == 0x05)) {
+               	    printf("HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
+
+                    if (tcsetattr(fd, TCSANOW, &oldtio) == -1)
+                    {
+                        perror("tcsetattr");
+                        exit(-1);
+                    }
+
+                    //close(fd);
+
+                    return 0;
+
+                }
+               
             }
             
         }
@@ -441,6 +478,12 @@ int llwrite(const unsigned char *buf, int bufSize)
     trama[0] = FLAG;
     trama[1] = A_EMISSOR;
     trama[2] = 0x00;
+    
+    if (seq_num == 1) {
+    	trama[2] = 0x40;
+    }
+    
+    
     trama[3] = 0x00; //checksum po Lab3
     trama[3] = checksum(trama, 4); // pode correr mal
     trama[n - 1] = FLAG;
@@ -536,6 +579,16 @@ int llread(unsigned char *packet, const char *port)
     if (check == 2) {
         trama_envio[2] = DISC;
         trama_envio[3] = 0x00;
+        trama_envio[3] = checksum(trama_envio, 5);
+    }
+    else if (check == 5) {
+    	trama_envio[2] = 0x05;
+    	
+    	if (arq_num == 1) {
+    		trama_envio[2] = 0x85;
+    	}
+    	
+    	trama_envio[3] = 0x00;
         trama_envio[3] = checksum(trama_envio, 5);
     }
     
@@ -650,6 +703,8 @@ int main(int argc, char *argv[])
 
         llopen(connectionParameters);
         sleep(1);
+        
+        seq_num = 0;
 
         unsigned char* res = malloc(sizeof(char) * 5);
         res[0] = 0x71;
@@ -666,6 +721,8 @@ int main(int argc, char *argv[])
 
         llwrite(res, 5);
         sleep(1);
+        
+        switch_seq();
         
         unsigned char* res2 = malloc(sizeof(char) * 10);
         res2[0] = FLAG;
@@ -686,11 +743,15 @@ int main(int argc, char *argv[])
         
         llwrite(res2, 6);
         sleep(1);
+        
+        switch_seq();
 
 
         llclose(0);
     }
     else {
+    	arq_num = 1;
+    	
         int check = 0;
         unsigned char* res = malloc(sizeof(char) * 4000);
         while (check == 0) {
@@ -704,6 +765,8 @@ int main(int argc, char *argv[])
                     printf("%x", final_content[i]);
                 }
                 printf("\n");
+                
+                switch_arq();
             }
             else if (check == 1) {
             	llread(res, argv[1]);
