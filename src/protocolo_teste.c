@@ -593,7 +593,7 @@ int llread(unsigned char *packet, const char *port)
     }
     
     
-    sleep(2);
+    sleep(1);
     write_noncanoical(port, trama_envio, 5); 
     
       
@@ -706,12 +706,9 @@ int main(int argc, char *argv[])
         
         seq_num = 0;
 
-        unsigned char* res = malloc(sizeof(char) * 5);
-        res[0] = 0x71;
-        res[1] = FLAG;
-        res[2] = 0x5d;
-        res[3] = 0x31;
-        res[4] = 0x11;
+        unsigned char* res = malloc(sizeof(char) * 2);
+        res[0] = 0x01;
+        res[1] = 0x02;
 
         printf("SENDING1: ");
         for (int i = 0; i < sizeof(res); i++) {
@@ -719,8 +716,8 @@ int main(int argc, char *argv[])
         }
         printf("\n");
 
-        llwrite(res, 5);
-        sleep(2);
+        llwrite(res, 2);
+        sleep(1);
         
         switch_seq();
         
@@ -742,7 +739,7 @@ int main(int argc, char *argv[])
         
         
         llwrite(res2, 6);
-        sleep(2);
+        sleep(1);
         
         switch_seq();
 
