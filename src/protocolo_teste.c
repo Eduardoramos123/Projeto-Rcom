@@ -593,7 +593,7 @@ int llread(unsigned char *packet, const char *port)
     }
     
     
-    sleep(1);
+    sleep(2);
     write_noncanoical(port, trama_envio, 5); 
     
       
