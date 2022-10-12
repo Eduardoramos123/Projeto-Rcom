@@ -76,12 +76,8 @@ LinkLayer global_var;
 int fd;
 
 
-unsigned char read_noncanonical(const char *port, unsigned int size, unsigned char* res)
-{
-    // Program usage: Uses either COM1 or COM2
-    //const char *serialPortName = port;
-
-    
+unsigned char read_noncanonical (unsigned int size, unsigned char* res)
+{   
     // Loop for input
     unsigned char *old_trama = malloc(sizeof(char) * size); // +1: Save space for the final '\0' char
 
@@ -128,76 +124,42 @@ unsigned char read_noncanonical(const char *port, unsigned int size, unsigned ch
                         received_trama = trama;
                         total_bytes_read = bytes;
                         
-
                         return 5;
                     }
 
                 }  
 		    }
         }
+
         else {
             printf("checksum: %x\n", checksum(trama, 5));
             printf("trama[2]: %x\n", trama[2]);
             if (checksum(trama, 5) == 0) {
-                if (trama[1] == A_RECETOR && trama[2] == UA) {
+                if (trama[1] == A_RECETOR && trama[2] == UA) return 0; 
 
-                    
+                else if (trama[1] == A_EMISSOR && trama[2] == DISC) return 2;
 
-                    return 0;
-
-                } 
-                else if (trama[1] == A_EMISSOR && trama[2] == DISC) {
-
+                else if (trama[1] == A_RECETOR && trama[2] == DISC) return 0; 
                 
+                else if (trama[1] == A_EMISSOR && trama[2] == SET) return 3; 
 
-                    return 2;
+                else if (trama[1] == A_EMISSOR && trama[2] == UA) return 2;
 
-                }
-                else if (trama[1] == A_RECETOR && trama[2] == DISC) {
-
-              
-
-                    return 0;
-
-                }
-                else if (trama[1] == A_EMISSOR && trama[2] == SET) {
-                
-
-                    return 3;
-               }
-               else if (trama[1] == A_EMISSOR && trama[2] == UA) {
-                   
-
-                    return 2;
-               }  
-               else if (trama[1] == A_RECETOR && (trama[2] == 0x85 || trama[2] == 0x05)) {
+                else if (trama[1] == A_RECETOR && (trama[2] == 0x85 || trama[2] == 0x05)) {
                	    printf("HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
-
-                
-
                     return 0;
-
                 }
-               
+        
             }
-            
+        
         }
     	
     }
 
-
-
-    // The while() cycle should be changed in order to respect the specifications
-    // of the protocol indicated in the Lab guide
-
-    // Restore the old port settings
-  
-
-
     return 1;
 }
 
-int write_noncanoical(const char *port, unsigned char* trama, unsigned int size)
+int write_noncanoical(unsigned char* trama, unsigned int size)
 {
 
 
@@ -255,10 +217,10 @@ int llopen(LinkLayer connectionParameters)
     while (check == 1) {
 	if (alarmEnabled == FALSE) {
 		alarmEnabled = TRUE;
-		write_noncanoical(global_port, trama, sizeof(trama));
+		write_noncanoical(trama, sizeof(trama));
 		alarm(3);
 		//sleep(1);
-		check = read_noncanonical(global_port, 5, res);
+		check = read_noncanonical(5, res);
 	}
     }
     alarm(0);
@@ -352,10 +314,10 @@ int llwrite(const unsigned char *buf, int bufSize)
     while (check == 1) {
         if (alarmEnabled == FALSE) {
             alarmEnabled = TRUE;
-            write_noncanoical(global_port, trama, n);
+            write_noncanoical(trama, n);
             alarm(3);
             //sleep(1);
-            check = read_noncanonical(global_port, 5, res);
+            check = read_noncanonical(5, res);
         }
     }
     alarm(0); 
@@ -392,10 +354,10 @@ unsigned char* destuff_bytes(const unsigned char *buf, int bufSize) {
 ////////////////////////////////////////////////
 // LLREAD
 ////////////////////////////////////////////////
-int llread(unsigned char *packet, const char *port)
+int llread(unsigned char *packet)
 {
     unsigned char* res = malloc(sizeof(char) * 4000);
-    int check = read_noncanonical(port, 4000, res);
+    int check = read_noncanonical(4000, res);
 
     if (check == 1) {
         printf("llread deu mal\n");
@@ -430,7 +392,7 @@ int llread(unsigned char *packet, const char *port)
     
     
     sleep(1);
-    write_noncanoical(port, trama_envio, 5); 
+    write_noncanoical(trama_envio, 5); 
     
       
 
@@ -488,10 +450,10 @@ int llclose(int showStatistics)
     while (check == 1) {
 	if (alarmEnabled == FALSE) {
 		alarmEnabled = TRUE;
-		write_noncanoical(global_port, trama, 5);
+		write_noncanoical(trama, 5);
 		alarm(3);
 		//sleep(1);
-		check = read_noncanonical(global_port, 5, res);
+		check = read_noncanonical(5, res);
 	}
     }
     alarm(0);
@@ -508,7 +470,7 @@ int llclose(int showStatistics)
     
     
     sleep(1);
-    write_noncanoical(global_port, envio_trama, 5);
+    write_noncanoical(envio_trama, 5);
     
     printf("Connection CLOSED!\n");
 
@@ -525,11 +487,10 @@ int main(int argc, char *argv[])
     connectionParameters.timeout = 0;
     strcpy(connectionParameters.serialPort, argv[1]);
 
-    fd = open(argv[1], O_RDWR | O_NOCTTY);
-    
     // Open serial port device for reading and writing and not as controlling tty
     // because we don't want to get killed if linenoise sends CTRL-C.
-    //int fd = open(serialPortName, O_RDWR | O_NOCTTY);
+    fd = open(argv[1], O_RDWR | O_NOCTTY);
+
     if (fd < 0)
     {
         perror(argv[1]);
@@ -592,19 +553,19 @@ int main(int argc, char *argv[])
         
         seq_num = 0;
 
-        unsigned char* res = malloc(sizeof(char) * 1000);
+        unsigned char* res = malloc(sizeof(char) * 100);
         
-        for (int i = 0; i < 500; i++) {
+        for (int i = 0; i < 100; i++) {
         	res[i] = 0xAA;
         }
         
         printf("SENDING1: ");
-        for (int i = 0; i < sizeof(res); i++) {
+        for (int i = 0; i < 100; i++) {
             printf("%x", res[i]);
         }
         printf("\n");
 
-        llwrite(res, 1000);
+        llwrite(res, 100);
         sleep(1);
         
         switch_seq();
@@ -619,7 +580,7 @@ int main(int argc, char *argv[])
         
         
         printf("SENDING2: ");
-        for (int i = 0; i < sizeof(res2); i++) {
+        for (int i = 0; i < 6; i++) {
             printf("%x", res2[i]);
         }
         printf("\n");
@@ -640,7 +601,7 @@ int main(int argc, char *argv[])
         int check = 0;
         unsigned char* res = malloc(sizeof(char) * 4000);
         while (check == 0) {
-            check = llread(res, argv[1]);
+            check = llread(res);
             if (check == 3) {
                 check = 0;
             }
@@ -654,7 +615,7 @@ int main(int argc, char *argv[])
                 switch_arq();
             }
             else if (check == 1) {
-            	llread(res, argv[1]);
+            	llread(res);
             }
         }
     }
@@ -671,5 +632,6 @@ int main(int argc, char *argv[])
 
     return 0;
 }
+
 
 
