@@ -592,17 +592,19 @@ int main(int argc, char *argv[])
         
         seq_num = 0;
 
-        unsigned char* res = malloc(sizeof(char) * 2);
-        res[0] = 0x01;
-        res[1] = 0x02;
-
+        unsigned char* res = malloc(sizeof(char) * 1000);
+        
+        for (int i = 0; i < 500; i++) {
+        	res[i] = 0xAA;
+        }
+        
         printf("SENDING1: ");
         for (int i = 0; i < sizeof(res); i++) {
             printf("%x", res[i]);
         }
         printf("\n");
 
-        llwrite(res, 2);
+        llwrite(res, 1000);
         sleep(1);
         
         switch_seq();
