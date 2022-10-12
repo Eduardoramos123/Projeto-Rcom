@@ -589,7 +589,7 @@ int llread(unsigned char *packet, const char *port)
     	}
     	
     	trama_envio[3] = 0x00;
-        trama_envio[3] = checksum(trama_envio, 5);
+           trama_envio[3] = checksum(trama_envio, 5);
     }
     
     
@@ -720,7 +720,7 @@ int main(int argc, char *argv[])
         printf("\n");
 
         llwrite(res, 5);
-        sleep(1);
+        sleep(2);
         
         switch_seq();
         
@@ -742,7 +742,7 @@ int main(int argc, char *argv[])
         
         
         llwrite(res2, 6);
-        sleep(1);
+        sleep(2);
         
         switch_seq();
 
