@@ -79,65 +79,14 @@ int fd;
 unsigned char read_noncanonical(const char *port, unsigned int size, unsigned char* res)
 {
     // Program usage: Uses either COM1 or COM2
-    const char *serialPortName = port;
+    //const char *serialPortName = port;
 
-    // Open serial port device for reading and writing and not as controlling tty
-    // because we don't want to get killed if linenoise sends CTRL-C.
-    //int fd = open(serialPortName, O_RDWR | O_NOCTTY);
-    if (fd < 0)
-    {
-        perror(serialPortName);
-        exit(-1);
-    }
-
-    struct termios oldtio;
-    struct termios newtio;
-
-    // Save current port settings
-    if (tcgetattr(fd, &oldtio) == -1)
-    {
-        perror("tcgetattr");
-        exit(-1);
-    }
-
-    // Clear struct for new port settings
-    memset(&newtio, 0, sizeof(newtio));
-
-    newtio.c_cflag = BAUDRATE | CS8 | CLOCAL | CREAD;
-    newtio.c_iflag = IGNPAR;
-    newtio.c_oflag = 0;
-
-    // Set input mode (non-canonical, no echo,...)
-    newtio.c_lflag = 0;
-    newtio.c_cc[VTIME] = 0; // Inter-character timer unused
-    newtio.c_cc[VMIN] = 5;  // Blocking read until 5 chars received
-
-    // VTIME e VMIN should be changed in order to protect with a
-    // timeout the reception of the following character(s)
-
-    // Now clean the line and activate the settings for the port
-    // tcflush() discards data written to the object referred to
-    // by fd but not transmitted, or data received but not read,
-    // depending on the value of queue_selector:
-    //   TCIFLUSH - flushes data received but not read.
-    tcflush(fd, TCIOFLUSH);
-
-    // Set new port settings
-    if (tcsetattr(fd, TCSANOW, &newtio) == -1)
-    {
-        perror("tcsetattr");
-        exit(-1);
-    }
-
-    printf("New termios structure set\n");
-
+    
     // Loop for input
     unsigned char *old_trama = malloc(sizeof(char) * size); // +1: Save space for the final '\0' char
 
     
     int	bytes = read(fd, old_trama, size);
-    
-    
     
     
     printf("bytes read: %d\n", bytes);
@@ -176,13 +125,6 @@ unsigned char read_noncanonical(const char *port, unsigned int size, unsigned ch
                     }
                     
                     if (checksum(buf, it) == 0) {
-                        if (tcsetattr(fd, TCSANOW, &oldtio) == -1)
-                        {
-                            perror("tcsetattr");
-                            exit(-1);
-                        }
-
-                        //close(fd);
                         received_trama = trama;
                         total_bytes_read = bytes;
                         
@@ -199,75 +141,39 @@ unsigned char read_noncanonical(const char *port, unsigned int size, unsigned ch
             if (checksum(trama, 5) == 0) {
                 if (trama[1] == A_RECETOR && trama[2] == UA) {
 
-                    if (tcsetattr(fd, TCSANOW, &oldtio) == -1)
-                    {
-                        perror("tcsetattr");
-                        exit(-1);
-                    }
-
-                    //close(fd);
+                    
 
                     return 0;
 
                 } 
                 else if (trama[1] == A_EMISSOR && trama[2] == DISC) {
 
-                    if (tcsetattr(fd, TCSANOW, &oldtio) == -1)
-                    {
-                        perror("tcsetattr");
-                        exit(-1);
-                    }
-
-                    //close(fd);
+                
 
                     return 2;
 
                 }
                 else if (trama[1] == A_RECETOR && trama[2] == DISC) {
 
-                    if (tcsetattr(fd, TCSANOW, &oldtio) == -1)
-                    {
-                        perror("tcsetattr");
-                        exit(-1);
-                    }
-
-                    //close(fd);
+              
 
                     return 0;
 
                 }
                 else if (trama[1] == A_EMISSOR && trama[2] == SET) {
-                    if (tcsetattr(fd, TCSANOW, &oldtio) == -1)
-                    {
-                        perror("tcsetattr");
-                        exit(-1);
-                    }
-
-                    //close(fd);
+                
 
                     return 3;
                }
                else if (trama[1] == A_EMISSOR && trama[2] == UA) {
-                    if (tcsetattr(fd, TCSANOW, &oldtio) == -1)
-                    {
-                        perror("tcsetattr");
-                        exit(-1);
-                    }
-
-                    //close(fd);
+                   
 
                     return 2;
                }  
                else if (trama[1] == A_RECETOR && (trama[2] == 0x85 || trama[2] == 0x05)) {
                	    printf("HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
 
-                    if (tcsetattr(fd, TCSANOW, &oldtio) == -1)
-                    {
-                        perror("tcsetattr");
-                        exit(-1);
-                    }
-
-                    //close(fd);
+                
 
                     return 0;
 
@@ -285,13 +191,7 @@ unsigned char read_noncanonical(const char *port, unsigned int size, unsigned ch
     // of the protocol indicated in the Lab guide
 
     // Restore the old port settings
-    if (tcsetattr(fd, TCSANOW, &oldtio) == -1)
-    {
-        perror("tcsetattr");
-        exit(-1);
-    }
-
-    //close(fd);
+  
 
 
     return 1;
@@ -299,65 +199,9 @@ unsigned char read_noncanonical(const char *port, unsigned int size, unsigned ch
 
 int write_noncanoical(const char *port, unsigned char* trama, unsigned int size)
 {
-    // Program usage: Uses either COM1 or COM2
-    const char *serialPortName = port;
 
-    // Open serial port device for reading and writing, and not as controlling tty
-    // because we don't want to get killed if linenoise sends CTRL-C.
-    //int fd = open(serialPortName, O_RDWR | O_NOCTTY);
-
-    
-    if (fd < 0)
-    {
-        perror(serialPortName);
-        exit(-1);
-    }
-
-    struct termios oldtio;
-    struct termios newtio;
-
-    // Save current port settings
-    if (tcgetattr(fd, &oldtio) == -1)
-    {
-        perror("tcgetattr");
-        exit(-1);
-    }
-
-    // Clear struct for new port settings
-    memset(&newtio, 0, sizeof(newtio));
-
-    newtio.c_cflag = BAUDRATE | CS8 | CLOCAL | CREAD;
-    newtio.c_iflag = IGNPAR;
-    newtio.c_oflag = 0;
-
-    // Set input mode (non-canonical, no echo,...)
-    newtio.c_lflag = 0;
-    newtio.c_cc[VTIME] = 0; // Inter-character timer unused
-    newtio.c_cc[VMIN] = 5;  // Blocking read until 5 chars received
-
-    // VTIME e VMIN should be changed in order to protect with a
-    // timeout the reception of the following character(s)
-
-    // Now clean the line and activate the settings for the port
-    // tcflush() discards data written to the object referred to
-    // by fd but not transmitted, or data received but not read,
-    // depending on the value of queue_selector:
-    //   TCIFLUSH - flushes data received but not read.
-    tcflush(fd, TCIOFLUSH);
-
-    // Set new port settings
-    if (tcsetattr(fd, TCSANOW, &newtio) == -1)
-    {
-        perror("tcsetattr");
-        exit(-1);
-    }
-
-    printf("New termios structure set\n");
 
     // Create string to send
-
-
-
 
     int bytes = write(fd, trama, size);
     
@@ -373,14 +217,6 @@ int write_noncanoical(const char *port, unsigned char* trama, unsigned int size)
     // Wait until all bytes have been written to the serial port
     sleep(1);
 
-    // Restore the old port settings
-    if (tcsetattr(fd, TCSANOW, &oldtio) == -1)
-    {
-        perror("tcsetattr");
-        exit(-1);
-    }
-
-    //close(fd);
 
     return 0;
 }
@@ -690,6 +526,56 @@ int main(int argc, char *argv[])
     strcpy(connectionParameters.serialPort, argv[1]);
 
     fd = open(argv[1], O_RDWR | O_NOCTTY);
+    
+    // Open serial port device for reading and writing and not as controlling tty
+    // because we don't want to get killed if linenoise sends CTRL-C.
+    //int fd = open(serialPortName, O_RDWR | O_NOCTTY);
+    if (fd < 0)
+    {
+        perror(argv[1]);
+        exit(-1);
+    }
+
+    struct termios oldtio;
+    struct termios newtio;
+
+    // Save current port settings
+    if (tcgetattr(fd, &oldtio) == -1)
+    {
+        perror("tcgetattr");
+        exit(-1);
+    }
+
+    // Clear struct for new port settings
+    memset(&newtio, 0, sizeof(newtio));
+
+    newtio.c_cflag = BAUDRATE | CS8 | CLOCAL | CREAD;
+    newtio.c_iflag = IGNPAR;
+    newtio.c_oflag = 0;
+
+    // Set input mode (non-canonical, no echo,...)
+    newtio.c_lflag = 0;
+    newtio.c_cc[VTIME] = 0; // Inter-character timer unused
+    newtio.c_cc[VMIN] = 1;  // Blocking read until 5 chars received
+
+    // VTIME e VMIN should be changed in order to protect with a
+    // timeout the reception of the following character(s)
+
+    // Now clean the line and activate the settings for the port
+    // tcflush() discards data written to the object referred to
+    // by fd but not transmitted, or data received but not read,
+    // depending on the value of queue_selector:
+    //   TCIFLUSH - flushes data received but not read.
+    tcflush(fd, TCIOFLUSH);
+
+    // Set new port settings
+    if (tcsetattr(fd, TCSANOW, &newtio) == -1)
+    {
+        perror("tcsetattr");
+        exit(-1);
+    }
+
+    printf("New termios structure set\n");
 
     char str1[] = "tx";
     if (strcmp(argv[2], str1) == 0) {
@@ -770,6 +656,14 @@ int main(int argc, char *argv[])
             }
         }
     }
+    
+    // Restore the old port settings
+    if (tcsetattr(fd, TCSANOW, &oldtio) == -1)
+    {
+        perror("tcsetattr");
+        exit(-1);
+    }
+
     
     close(fd);
 
