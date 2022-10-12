@@ -646,7 +646,7 @@ int main(int argc, char *argv[])
             }
             else if (check == 0) {
                 printf("RECEIVED: ");
-                for (int i = 0; i < total_bytes_read; i++) {
+                for (int i = 0; i < total_bytes_read - 6; i++) {
                     printf("%x", final_content[i]);
                 }
                 printf("\n");
