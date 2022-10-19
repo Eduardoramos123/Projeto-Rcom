@@ -99,7 +99,22 @@ unsigned char read_noncanonical (unsigned int size, unsigned char* res)
     unsigned char *old_trama = malloc(sizeof(char) * size); // +1: Save space for the final '\0' char
 
     
-    int	bytes = read(fd, old_trama, size);
+    int	bytes;
+    unsigned char buf[1];
+    int numr = 0;
+    while (TRUE) {
+    	bytes = read(fd, buf, 1);
+    	
+    	if (bytes == 0 && numr == 0) {
+    		continue;
+    	}
+    	else if (bytes == 0) {
+    		break;
+    	}
+    	
+    	old_trama[numr] = buf[0];
+    	numr++;
+    }
     
     
     printf("bytes read: %d\n", bytes);
@@ -117,6 +132,7 @@ unsigned char read_noncanonical (unsigned int size, unsigned char* res)
     for (int i = 0; i <= iter; i++) {
     	trama[i] = old_trama[i];
     } 
+    
     for (int i = 0; i < iter + 1; i++) {
     	printf("%x", trama[i]);
     }
@@ -138,8 +154,9 @@ unsigned char read_noncanonical (unsigned int size, unsigned char* res)
                     }
                     
                     if (checksum(buf, it) == 0) {
+                    
                         received_trama = trama;
-                        total_bytes_read = bytes;
+                        total_bytes_read = numr;
                         
                         return 5;
                     }
@@ -419,13 +436,19 @@ int llread(unsigned char *packet)
     else if (check == 3) {
         return 3;
     }
+    
+    printf("\n\n\n\n\n\n\n\n\n\n\n\n");
+    printf("RECEIVED_TRAMA: \n");
    
     unsigned char buf[total_bytes_read - 5];
     int it = 0;
     for (int i = 4; i < total_bytes_read - 2; i++) {
         buf[it] = received_trama[i];
         it++;
+        printf("%x", received_trama[i]);
     }
+    
+    printf("\n\n\n\n\n\n\n\n\n\n\n\n");
     
     printf("CONTENT: ");
     for (int i = 0; i < it; i++) {
@@ -690,7 +713,7 @@ int main(int argc, char *argv[])
     // Set input mode (non-canonical, no echo,...)
     newtio.c_lflag = 0;
     newtio.c_cc[VTIME] = 0; // Inter-character timer unused
-    newtio.c_cc[VMIN] = 1;  // Blocking read until 5 chars received
+    newtio.c_cc[VMIN] = 0;  // Blocking read until 5 chars received
 
     // VTIME e VMIN should be changed in order to protect with a
     // timeout the reception of the following character(s)
