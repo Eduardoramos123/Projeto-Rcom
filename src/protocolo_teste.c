@@ -8,6 +8,7 @@
 #include <termios.h>
 #include <unistd.h>
 #include <signal.h>
+#include <limits.h>
 
 
 
@@ -29,8 +30,22 @@
 #define DISC (0x0B)
 
 
-volatile int STOP = FALSE;
+//Controlo 
+#define DADOS (0X01)
+#define START (0X02)
+#define END (0X03)
 
+#define SIZE_FILE (0X00);
+#define NAME_FILE (0X01);
+
+
+#define N_TRIES 3
+#define TIMEOUT 4
+
+
+volatile int STOP = FALSE;
+char seq_number=0;
+     
 unsigned char* last_trama;
 unsigned char* received_trama;
 int total_bytes_read;
@@ -38,6 +53,8 @@ unsigned char* final_content;
 int stuffed_size;
 int seq_num;
 int arq_num;
+
+int num_read;
 
 
 void switch_seq() {
@@ -477,15 +494,171 @@ int llclose(int showStatistics)
     return 0;
 }
 
-int main(int argc, char *argv[])
-{
+
+
+void applicationLayer(const char *serialPort, const char *role, int baudRate, int nTries, int timeout, const char *filename){
+
     LinkLayer connectionParameters;
     LinkLayerRole r;
 
-    connectionParameters.baudRate = 0;
-    connectionParameters.nRetransmissions = 0;
-    connectionParameters.timeout = 0;
-    strcpy(connectionParameters.serialPort, argv[1]);
+    connectionParameters.baudRate = baudRate;
+    connectionParameters.nRetransmissions = nTries;
+    connectionParameters.timeout = timeout;
+    strcpy(connectionParameters.serialPort, serialPort);
+    
+
+    char str1[] = "tx";
+    char str2[] = "rx";
+     
+    if (strcmp(role, str1) == 0) r = LlTx;
+    
+    else if (strcmp(role, str2) == 0) r = LlRx;
+
+    else {
+        printf("Argv[2] has an error");
+        exit(1);
+    }
+
+    if (r == LlTx){
+    
+    	llopen(connectionParameters);
+    	sleep(1);
+    	
+    	printf("filename: %s\n", filename);
+
+        FILE *pinguim = fopen(filename,"rb");
+        
+        if (pinguim == NULL) {
+        	printf("Erro ao abrir o ficheiro\n");
+        	
+        	return;
+        }
+        
+        //const char *name_file = filename;
+        //fseek(pinguim, 0L, SEEK_END);
+        long int tamanho_file = ftell(pinguim);
+        printf("size of file is equal to : %ld \n",tamanho_file);
+
+        //pacote controlo Start-------------------------------------
+        int number_octetos;
+        if(tamanho_file <= UCHAR_MAX) number_octetos = 1;
+        else if(tamanho_file <= USHRT_MAX) number_octetos = 2;
+        else if(tamanho_file <= INT_MAX) number_octetos = 4;
+        else perror("file is to big");
+        printf("octetos %d",number_octetos);
+
+        unsigned char* pacote_controlo = malloc(5 + number_octetos + strlen(filename));
+
+        pacote_controlo[0] = START;
+        pacote_controlo[1] = SIZE_FILE;
+        pacote_controlo[2] = number_octetos;
+
+        if(number_octetos == 1) tamanho_file = tamanho_file << 56;
+        if(number_octetos == 2) tamanho_file = tamanho_file << 48;
+        if(number_octetos == 4) tamanho_file = tamanho_file << 32;
+
+
+        for(int i = 3; i <= (2 + number_octetos); i++){
+            pacote_controlo[i] = tamanho_file;
+            tamanho_file = tamanho_file << 8;
+        }
+        pacote_controlo[ 2 + number_octetos + 1] = NAME_FILE;
+        pacote_controlo[ 2 + number_octetos + 2] = strlen(filename);
+        for(int i = 0 ; i < strlen(filename);i++){
+            pacote_controlo[2+number_octetos+3+i] = filename[i];
+        }
+        //llwrite(pacote_controlo,sizeof(pacote_controlo));
+        //sleep(1);
+
+        //envio de dados -----------------------------------------
+        unsigned char pacote_dados[1500];
+        unsigned char dados_efetivos[1496];
+        while (!feof(pinguim)){
+            pacote_dados[0] = DADOS;
+            pacote_dados[1] = seq_number; // ver melhor
+            int len = fread(dados_efetivos,1,1496,pinguim);
+            printf("Numero de dados enviados: %d \n",len);
+            char l1 = (char)(len / 256);
+            char l2 = (char)(len % 256);
+            pacote_dados[2] = l2;
+            pacote_dados[3] = l1;
+            memcpy(&pacote_dados[4],dados_efetivos,sizeof(dados_efetivos));
+            llwrite(pacote_dados,1500);
+            sleep(1);
+            
+            num_read = len;
+
+            
+        }
+        fclose(pinguim);
+        //pacote controlo End--------------------------------------
+        pacote_controlo[0] = END;
+        llwrite(pacote_controlo,sizeof(pacote_controlo));
+        sleep(1);
+        free(pacote_controlo);
+
+        llclose(0);
+    }
+    
+    else{
+        FILE *pinguim2 = fopen("penguin2.gif","wb");
+        int check = 0;
+        unsigned char* res = malloc(sizeof(char) * 2000);
+        int a = 0;
+        while (check == 0) {
+            check = llread(res);
+            if (check == 3) {
+                check = 0;
+            }
+            else if (check == 0) {
+            	a++;
+            	
+            	unsigned char final[1496];
+            	
+            	printf("\n\n\n\n\n");
+                printf("SIZE: %d\n", 256 * final_content[2] + final_content[3]);
+                printf("\n\n\n\n\n");
+            	
+                
+                int acum = 0;
+                for (int i = 4; i < total_bytes_read - 6; i++) {
+                	final[acum] = final_content[i];
+                	acum++;
+                }
+                
+                //unsigned char buf[acum];
+            	
+                printf("RECEIVED: ");
+                for (int i = 0; i < 1496; i++) {
+                    printf("%x", final[i]);
+                }
+                printf("\n");
+                
+                
+                printf("\n\n\n\n\n");
+                printf("ACUM: %d\n", acum);
+                printf("\n\n\n\n\n");
+                
+                
+                fwrite(final,1,1496, pinguim2);
+                	
+                
+                
+                switch_arq();
+                
+            }
+            else if (check == 1) {
+            	llread(res);
+            }
+        }
+        fclose(pinguim2);
+    }
+    return;
+}
+
+
+int main(int argc, char *argv[])
+{
 
     // Open serial port device for reading and writing and not as controlling tty
     // because we don't want to get killed if linenoise sends CTRL-C.
@@ -538,87 +711,31 @@ int main(int argc, char *argv[])
 
     printf("New termios structure set\n");
 
-    char str1[] = "tx";
-    if (strcmp(argv[2], str1) == 0) {
-        r = LlTx;
-    }
-    else {
-        r = LlRx;
+    if (argc < 4)
+    {
+        printf("Usage: %s /dev/ttySxx tx|rx filename\n", argv[0]);
+        exit(1);
     }
 
-    if (r == LlTx) {
+    const char *serialPort = argv[1];
+    const char *role = argv[2];
+    const char *filename = argv[3];
 
-        llopen(connectionParameters);
-        sleep(1);
-        
-        seq_num = 0;
+    printf("Starting link-layer protocol application\n"
+           "  - Serial port: %s\n"
+           "  - Role: %s\n"
+           "  - Baudrate: %d\n"
+           "  - Number of tries: %d\n"
+           "  - Timeout: %d\n"
+           "  - Filename: %s\n",
+           serialPort,
+           role,
+           BAUDRATE,
+           N_TRIES,
+           TIMEOUT,
+           filename);
 
-        unsigned char* res = malloc(sizeof(char) * 100);
-        
-        for (int i = 0; i < 100; i++) {
-        	res[i] = 0xAA;
-        }
-        
-        printf("SENDING1: ");
-        for (int i = 0; i < 100; i++) {
-            printf("%x", res[i]);
-        }
-        printf("\n");
-
-        llwrite(res, 100);
-        sleep(1);
-        
-        switch_seq();
-        
-        unsigned char* res2 = malloc(sizeof(char) * 10);
-        res2[0] = FLAG;
-        res2[1] = FLAG;
-        res2[2] = FLAG;
-        res2[3] = FLAG;
-        res2[4] = FLAG;
-        res2[5] = FLAG;
-        
-        
-        printf("SENDING2: ");
-        for (int i = 0; i < 6; i++) {
-            printf("%x", res2[i]);
-        }
-        printf("\n");
-        
-        
-        
-        llwrite(res2, 6);
-        sleep(1);
-        
-        switch_seq();
-
-
-        llclose(0);
-    }
-    else {
-    	arq_num = 1;
-    	
-        int check = 0;
-        unsigned char* res = malloc(sizeof(char) * 4000);
-        while (check == 0) {
-            check = llread(res);
-            if (check == 3) {
-                check = 0;
-            }
-            else if (check == 0) {
-                printf("RECEIVED: ");
-                for (int i = 0; i < total_bytes_read - 6; i++) {
-                    printf("%x", final_content[i]);
-                }
-                printf("\n");
-                
-                switch_arq();
-            }
-            else if (check == 1) {
-            	llread(res);
-            }
-        }
-    }
+    applicationLayer(serialPort, role, BAUDRATE, N_TRIES, TIMEOUT, filename);
     
     // Restore the old port settings
     if (tcsetattr(fd, TCSANOW, &oldtio) == -1)
