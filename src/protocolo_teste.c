@@ -96,7 +96,7 @@ int fd;
 unsigned char read_noncanonical (unsigned int size, unsigned char* res)
 {   
     // Loop for input
-    unsigned char *old_trama = malloc(sizeof(char) * size); // +1: Save space for the final '\0' char
+    unsigned char old_trama[size]; // +1: Save space for the final '\0' char
 
     
     int	bytes;
@@ -127,7 +127,7 @@ unsigned char read_noncanonical (unsigned int size, unsigned char* res)
     	iter++;
     }
     
-    unsigned char *trama = malloc(sizeof(char) * iter);
+    unsigned char trama[iter];
     
     for (int i = 0; i <= iter; i++) {
     	trama[i] = old_trama[i];
