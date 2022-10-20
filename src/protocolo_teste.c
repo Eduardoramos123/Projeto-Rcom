@@ -163,12 +163,12 @@ unsigned char read_noncanonical (unsigned int size, unsigned char* res)
                     if (seq_num_expected == 0 && trama[2] != 0x00) {
                     	printf("DUPLICATE ERROR\n");
                     	switch_arq();
-                    	return 5;
+                    	return 6;
                     }
                     else if (seq_num_expected == 1 && trama[2] != 0x40) {
                     	printf("DUPLICATE ERROR\n");
                     	switch_arq();
-                    	return 5;
+                    	return 6;
                     }
                     
                     
@@ -456,7 +456,7 @@ int llread(unsigned char *packet)
     	}
     	
     	trama_envio[3] = 0x00;
-           trama_envio[3] = checksum(trama_envio, 5);
+        trama_envio[3] = checksum(trama_envio, 5);
            
         sleep(1);
     	write_noncanoical(trama_envio, 5); 
@@ -658,6 +658,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
         pacote_controlo[0] = END;
         switch_seq();
         llwrite(pacote_controlo,sizeof(pacote_controlo));
+        switch_seq();
         sleep(1);
         free(pacote_controlo);
 
@@ -715,7 +716,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
             	llread(res);
             }
             else if (check == 6) {
-            	continue;
+            	check = 0;
             }
         }
         fclose(pinguim2);
