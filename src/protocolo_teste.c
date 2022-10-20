@@ -51,10 +51,12 @@ unsigned char* received_trama;
 int total_bytes_read;
 unsigned char* final_content;
 int stuffed_size;
-int seq_num;
-int arq_num;
+int seq_num = 0;
+int arq_num = 0;
 
-int num_read;
+int seq_num_expected;
+
+int num_read = 0;
 
 
 void switch_seq() {
@@ -72,6 +74,15 @@ void switch_arq() {
 	}
 	else {
 		arq_num = 1;
+	}
+}
+
+void switch_expected() {
+	if (seq_num_expected == 1) {
+		seq_num_expected = 0;
+	}
+	else {
+		seq_num_expected = 1;
 	}
 }
 
@@ -120,7 +131,7 @@ unsigned char read_noncanonical (unsigned int size, unsigned char* res)
     printf("bytes read: %d\n", bytes);
     
     int iter = 1;
-    for (int i = 1; i < size; i++) {
+    for (int i = 1; i < 2000; i++) {
     	if (old_trama[i] == FLAG && old_trama[i + 1] != 0x5d && old_trama[i + 1] != FLAG) {
     		break;
     	}
@@ -148,6 +159,19 @@ unsigned char read_noncanonical (unsigned int size, unsigned char* res)
                 if (trama[1] == A_EMISSOR) {
                     unsigned char buf[bytes - 6];
                     int it = 0;
+                    
+                    if (seq_num_expected == 0 && trama[2] != 0x00) {
+                    	printf("DUPLICATE ERROR\n");
+                    	switch_arq();
+                    	return 5;
+                    }
+                    else if (seq_num_expected == 1 && trama[2] != 0x40) {
+                    	printf("DUPLICATE ERROR\n");
+                    	switch_arq();
+                    	return 5;
+                    }
+                    
+                    
                     for (int i = 4; i < bytes - 1; i++) {
                         buf[it] = trama[i];
                         it++;
@@ -158,6 +182,7 @@ unsigned char read_noncanonical (unsigned int size, unsigned char* res)
                         received_trama = trama;
                         total_bytes_read = numr;
                         
+                        switch_expected();
                         return 5;
                     }
 
@@ -423,6 +448,20 @@ int llread(unsigned char *packet)
     	trama_envio[3] = 0x00;
            trama_envio[3] = checksum(trama_envio, 5);
     }
+    else if (check == 6) {
+    	trama_envio[2] = 0x05;
+    	
+    	if (arq_num == 1) {
+    		trama_envio[2] = 0x85;
+    	}
+    	
+    	trama_envio[3] = 0x00;
+           trama_envio[3] = checksum(trama_envio, 5);
+           
+        sleep(1);
+    	write_noncanoical(trama_envio, 5); 
+    	return 6;
+    }
     
     
     sleep(1);
@@ -607,6 +646,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
             pacote_dados[3] = l1;
             memcpy(&pacote_dados[4],dados_efetivos,sizeof(dados_efetivos));
             llwrite(pacote_dados,1500);
+            switch_seq();
             sleep(1);
             
             num_read = len;
@@ -616,6 +656,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
         fclose(pinguim);
         //pacote controlo End--------------------------------------
         pacote_controlo[0] = END;
+        switch_seq();
         llwrite(pacote_controlo,sizeof(pacote_controlo));
         sleep(1);
         free(pacote_controlo);
@@ -672,6 +713,9 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
             }
             else if (check == 1) {
             	llread(res);
+            }
+            else if (check == 6) {
+            	continue;
             }
         }
         fclose(pinguim2);
