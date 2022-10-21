@@ -282,7 +282,7 @@ int llopen(LinkLayer connectionParameters)
 		write_noncanoical(trama, sizeof(trama));
 		alarm(3);
 		//sleep(1);
-		check = read_noncanonical(5, res);
+		check = read_noncanonical(2000, res);
 	}
     }
     alarm(0);
@@ -381,7 +381,7 @@ int llwrite(const unsigned char *buf, int bufSize)
             write_noncanoical(trama, n);
             alarm(3);
             //sleep(1);
-            check = read_noncanonical(5, res);
+            check = read_noncanonical(2000, res);
         }
     }
     alarm(0); 
