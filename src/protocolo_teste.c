@@ -423,6 +423,8 @@ int llread(unsigned char *packet)
 {
     unsigned char* res = malloc(sizeof(char) * 4000);
     int check = read_noncanonical(4000, res);
+        
+    printf("CHECK: %d\n", check);
 
     if (check == 1) {
         printf("llread deu mal\n");
