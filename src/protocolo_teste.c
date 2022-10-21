@@ -58,6 +58,9 @@ int seq_num_expected;
 
 int num_read = 0;
 
+unsigned char* stuffed;
+unsigned char* unstuffed;
+
 
 void switch_seq() {
 	if (seq_num == 1) {
@@ -182,7 +185,7 @@ unsigned char read_noncanonical (unsigned int size, unsigned char* res)
                         received_trama = trama;
                         total_bytes_read = numr;
                         
-                        switch_expected();
+                        
                         return 5;
                     }
 
@@ -270,7 +273,7 @@ int llopen(LinkLayer connectionParameters)
     trama[3] = checksum(trama, 5); // pode correr mal
     last_trama = trama;
 
-    unsigned char* res = malloc(sizeof(char) * 5);
+    unsigned char res[5];
 
     int check = 1;
     while (check == 1) {
@@ -290,7 +293,7 @@ int llopen(LinkLayer connectionParameters)
 }
 
 
-unsigned char* stuff_bytes(const unsigned char *buf, int bufSize) {
+void stuff_bytes(const unsigned char *buf, int bufSize) {
     unsigned char stuff[bufSize * 2];
     int it = 0;
 
@@ -303,7 +306,7 @@ unsigned char* stuff_bytes(const unsigned char *buf, int bufSize) {
         it++;
     }
 
-    unsigned char* res = malloc(sizeof(char) * it * 2);
+    unsigned char res[it * 2];
 
 
     for (int i = 0; i < it; i++) {
@@ -312,7 +315,8 @@ unsigned char* stuff_bytes(const unsigned char *buf, int bufSize) {
     
     stuffed_size = it;
 
-    return res;
+    stuffed = res;
+    return;
 }
 
 
@@ -328,7 +332,8 @@ int llwrite(const unsigned char *buf, int bufSize)
     action.sa_handler = alarmHandler;
     sigaction(SIGALRM,&action,NULL);
 
-    unsigned char* buf_stuffed = stuff_bytes(buf, bufSize);
+    stuff_bytes(buf, bufSize);
+    unsigned char* buf_stuffed = stuffed;
     size_t n = stuffed_size + 6;
 
     unsigned char trama[n];
@@ -385,7 +390,7 @@ int llwrite(const unsigned char *buf, int bufSize)
     return 0;
 }
 
-unsigned char* destuff_bytes(const unsigned char *buf, int bufSize) {
+void destuff_bytes(const unsigned char *buf, int bufSize) {
     unsigned char stuff[bufSize];
     int it = 0;
 
@@ -400,13 +405,14 @@ unsigned char* destuff_bytes(const unsigned char *buf, int bufSize) {
         it++;
     }
 
-    unsigned char *res = malloc(sizeof(char) * it);
+    unsigned char res[it];
 
     for (int i = 0; i < it; i++) {
         res[i] = stuff[i];
     }
 
-    return res;
+    unstuffed = res;
+    return;
 }
 
 
@@ -494,8 +500,9 @@ int llread(unsigned char *packet)
     	printf("%x", buf[i]);
     }
     printf("\n");
-	
-    unsigned char* content = destuff_bytes(buf, it); 
+    
+    destuff_bytes(buf, it); 
+    unsigned char* content = unstuffed; 
     
     final_content = content;
 
@@ -656,9 +663,9 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
         fclose(pinguim);
         //pacote controlo End--------------------------------------
         pacote_controlo[0] = END;
-        switch_seq();
-        llwrite(pacote_controlo,sizeof(pacote_controlo));
-        switch_seq();
+        //switch_seq();
+        //llwrite(pacote_controlo,sizeof(pacote_controlo));
+        //switch_seq();
         sleep(1);
         free(pacote_controlo);
 
@@ -668,7 +675,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
     else{
         FILE *pinguim2 = fopen("penguin2.gif","wb");
         int check = 0;
-        unsigned char* res = malloc(sizeof(char) * 2000);
+        unsigned char res[2000];
         int a = 0;
         while (check == 0) {
             check = llread(res);
@@ -708,7 +715,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
                 fwrite(final,1,1496, pinguim2);
                 	
                 
-                
+                switch_expected();
                 switch_arq();
                 
             }
