@@ -273,7 +273,7 @@ int llopen(LinkLayer connectionParameters)
     trama[3] = checksum(trama, 5); // pode correr mal
     last_trama = trama;
 
-    unsigned char res[5];
+    unsigned char res[2000];
 
     int check = 1;
     while (check == 1) {
@@ -426,7 +426,7 @@ int llread(unsigned char *packet)
 
     if (check == 1) {
         printf("llread deu mal\n");
-        return 0;
+        return 3;
     }
     
 
@@ -730,6 +730,8 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
     }
     return;
 }
+
+
 
 
 int main(int argc, char *argv[])
