@@ -59,7 +59,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
 
     if (fd < 0)
     {
-        perror(argv[1]);
+        perror("erro ao abrir a porta serie \n");
         exit(-1);
     }
     

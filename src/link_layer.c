@@ -253,14 +253,6 @@ void alarmHandler(int signal)
 int llopen(LinkLayer connectionParameters)
 {
     
-    fd = open(connectionParameters.serialPort, O_RDWR | O_NOCTTY);
-
-    if (fd < 0)
-    {
-        perror(argv[1]);
-        exit(-1);
-    }
-
     struct termios oldtio;
     struct termios newtio;
 
