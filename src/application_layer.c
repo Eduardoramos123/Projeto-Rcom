@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include "application_layer.h"
 #include "link_layer.h"
+#include <fcntl.h>
 
 
 #define BUF_SIZE 256
@@ -19,6 +20,7 @@ extern int total_bytes_read;
 extern unsigned char* final_content;
 extern int seq_num;
 extern int seq_num_expected;
+extern int fd;
 int seq_number = 0;
 int num_read = 0;
 
@@ -52,6 +54,14 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
     connectionParameters.nRetransmissions = nTries;
     connectionParameters.timeout = timeout;
     strcpy(connectionParameters.serialPort, serialPort);
+
+     fd = open(connectionParameters.serialPort, O_RDWR | O_NOCTTY);
+
+    if (fd < 0)
+    {
+        perror(argv[1]);
+        exit(-1);
+    }
     
 
     char str1[] = "tx";
@@ -187,7 +197,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
                 	final[acum] = final_content[i];
                 	acum++;
                 }
-                
+
                 printf("RECEIVED: ");
                 for (int i = 0; i < final_size; i++) {
                     printf("%x", final[i]);
