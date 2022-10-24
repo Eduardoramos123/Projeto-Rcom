@@ -43,12 +43,20 @@ unsigned char* final_content;
 int stuffed_size;
 int seq_num = 0;
 int arq_num = 0;
-
 int seq_num_expected;
 
 
 unsigned char* stuffed;
 unsigned char* unstuffed;
+
+
+char* global_port;
+
+int alarmEnabled = FALSE;
+
+LinkLayer global_var;
+
+int fd;
 
 void switch_arq() {
 	if (arq_num == 1) {
@@ -67,22 +75,11 @@ unsigned char checksum (unsigned char *trama, size_t sz) {
 	return res;
 }
 
-char* global_port;
-
-int alarmEnabled = FALSE;
-
-LinkLayer global_var;
-
-int fd;
-
-
-
-unsigned char read_noncanonical (unsigned int size, unsigned char* res)
+unsigned char read_noncanonical (unsigned int size)
 {   
     // Loop for input
     unsigned char old_trama[size]; // +1: Save space for the final '\0' char
 
-    
     int	bytes;
     unsigned char buf[1];
     int numr = 0;
@@ -116,15 +113,8 @@ unsigned char read_noncanonical (unsigned int size, unsigned char* res)
     for (int i = 0; i <= iter; i++) {
     	trama[i] = old_trama[i];
     } 
-    
-    for (int i = 0; i < iter + 1; i++) {
-    	printf("%x", trama[i]);
-    }
-    printf("\n");
-    printf("%d\n", size);
-    	
+      	
     int new_size = iter + 1;
-    
 
     if (trama[0] == FLAG && trama[new_size - 1] == FLAG) {
         if (new_size != 5) {
@@ -144,7 +134,6 @@ unsigned char read_noncanonical (unsigned int size, unsigned char* res)
                     	return 6;
                     }
                     
-                    
                     for (int i = 4; i < bytes - 1; i++) {
                         buf[it] = trama[i];
                         it++;
@@ -154,18 +143,13 @@ unsigned char read_noncanonical (unsigned int size, unsigned char* res)
                     
                         received_trama = trama;
                         total_bytes_read = numr;
-                        
-                        
                         return 5;
                     }
-
                 }  
 		    }
         }
 
         else {
-            printf("checksum: %x\n", checksum(trama, 5));
-            printf("trama[2]: %x\n", trama[2]);
             if (checksum(trama, 5) == 0) {
                 if (trama[1] == A_RECETOR && trama[2] == UA) return 0; 
 
@@ -177,40 +161,29 @@ unsigned char read_noncanonical (unsigned int size, unsigned char* res)
 
                 else if (trama[1] == A_EMISSOR && trama[2] == UA) return 2;
 
-                else if (trama[1] == A_RECETOR && (trama[2] == 0x85 || trama[2] == 0x05)) {
-               	    printf("HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
-                    return 0;
-                }
+                else if (trama[1] == A_RECETOR && (trama[2] == 0x85 || trama[2] == 0x05)) return 0;
+                
                 else if (trama[1] == A_RECETOR && trama[2] == REJ) {
                     alarm(0); 
     		    	alarmEnabled = FALSE;
                     return 1;
                 }
-        
             }
-        
         }
-    	
     }
-
     return 1;
 }
 
 int write_noncanoical(unsigned char* trama, unsigned int size)
 {
 
-
     // Create string to send
-
     int bytes = write(fd, trama, size);
-    
-    printf("bytes writen: %d\n", bytes);
-    
     
     for (int i = 0; i < size; i++) {
     	printf("%x", trama[i]);
     }
-    
+
     printf("\n");
 
     // Wait until all bytes have been written to the serial port
@@ -250,16 +223,14 @@ int llopen(LinkLayer connectionParameters)
     trama[3] = checksum(trama, 5); // pode correr mal
     last_trama = trama;
 
-    unsigned char res[2000];
-
     int check = 1;
     while (check == 1) {
 	if (alarmEnabled == FALSE) {
 		alarmEnabled = TRUE;
 		write_noncanoical(trama, sizeof(trama));
 		alarm(3);
-		//sleep(1);
-		check = read_noncanonical(2000, res);
+		sleep(1);
+		check = read_noncanonical(2000);
 	}
     }
     alarm(0);
@@ -334,22 +305,6 @@ int llwrite(const unsigned char *buf, int bufSize)
         it++;
     }
     
-    printf("TRAMA A ENVIAR: ");
-    for (int i = 0; i < stuffed_size; i++) {
-    	printf("%x", buf_stuffed[i]);
-    }
-    printf("\n");
-    printf("\n");
-    printf("\n");
-    
-    
-    printf("TRAMA A ENVIAR: ");
-    for (int i = 0; i < n; i++) {
-    	printf("%x", trama[i]);
-    }
-    printf("\n");
-
-    unsigned char* res = malloc(sizeof(char) * 5);
 
     int check = 1;
     while (check == 1) {
@@ -357,8 +312,8 @@ int llwrite(const unsigned char *buf, int bufSize)
             alarmEnabled = TRUE;
             write_noncanoical(trama, n);
             alarm(3);
-            //sleep(1);
-            check = read_noncanonical(2000, res);
+            sleep(1);
+            check = read_noncanonical(2000);
         }
     }
     alarm(0); 
@@ -393,16 +348,13 @@ void destuff_bytes(const unsigned char *buf, int bufSize) {
 }
 
 
-
 ////////////////////////////////////////////////
 // LLREAD
 ////////////////////////////////////////////////
 int llread(unsigned char *packet)
 {
-    unsigned char* res = malloc(sizeof(char) * 4000);
-    int check = read_noncanonical(4000, res);
+    int check = read_noncanonical(4000);
         
-    printf("CHECK: %d\n", check);
 
     if (check == 1) {
         printf("llread deu mal. Recetor envia REJ!\n");
@@ -421,7 +373,6 @@ int llread(unsigned char *packet)
         
         return 3;
     }
-    
 
     unsigned char trama_envio[5];
     trama_envio[0] = FLAG;
@@ -466,33 +417,21 @@ int llread(unsigned char *packet)
     sleep(1);
     write_noncanoical(trama_envio, 5); 
     
-      
-
     if (check == 2) {
         return 1;
     }
+
     else if (check == 3) {
         return 3;
     }
     
-    printf("\n\n\n\n\n\n\n\n\n\n\n\n");
-    printf("RECEIVED_TRAMA: \n");
    
     unsigned char buf[total_bytes_read - 5];
     int it = 0;
     for (int i = 4; i < total_bytes_read - 2; i++) {
         buf[it] = received_trama[i];
         it++;
-        printf("%x", received_trama[i]);
     }
-    
-    printf("\n\n\n\n\n\n\n\n\n\n\n\n");
-    
-    printf("CONTENT: ");
-    for (int i = 0; i < it; i++) {
-    	printf("%x", buf[i]);
-    }
-    printf("\n");
     
     destuff_bytes(buf, it); 
     unsigned char* content = unstuffed; 
@@ -524,16 +463,15 @@ int llclose(int showStatistics)
     trama[3] = checksum(trama, 5); // pode correr mal
     last_trama = trama;
 
-    unsigned char* res = malloc(sizeof(char) * 5);
   
     int check = 1;
-    while (check == 1) {
+    while (check != 0) {
 	if (alarmEnabled == FALSE) {
 		alarmEnabled = TRUE;
 		write_noncanoical(trama, 5);
 		alarm(3);
 		//sleep(1);
-		check = read_noncanonical(5, res);
+		check = read_noncanonical(5);
 	}
     }
     alarm(0);

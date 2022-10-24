@@ -10,8 +10,6 @@
 #include <signal.h>
 #include <limits.h>
 
-
-#define BAUDRATE B38400
 #define BUF_SIZE 256
 
 //Controlo 
@@ -29,7 +27,6 @@ extern int seq_num_expected;
 int seq_number = 0;
 int num_read = 0;
 extern int fd;
-
 
 
 void switch_seq() {
@@ -51,7 +48,6 @@ void switch_expected() {
 }
 
 
-
 void applicationLayer(const char *serialPort, const char *role, int baudRate, int nTries, int timeout, const char *filename){
 
     LinkLayer connectionParameters;
@@ -64,7 +60,6 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
     
     fd = open(serialPort, O_RDWR | O_NOCTTY);
     
-    printf("HERE1!!!!!!!!!\n");
     
     if (fd < 0)
     {
@@ -83,11 +78,10 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
         exit(-1);
     }
     
-    
     // Clear struct for new port settings
     memset(&newtio, 0, sizeof(newtio));
 
-    newtio.c_cflag = BAUDRATE | CS8 | CLOCAL | CREAD;
+    newtio.c_cflag = baudRate | CS8 | CLOCAL | CREAD;
     newtio.c_iflag = IGNPAR;
     newtio.c_oflag = 0;
 
@@ -113,7 +107,6 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
         exit(-1);
     }
     
-
     char str1[] = "tx";
     char str2[] = "rx";
      
@@ -122,7 +115,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
     else if (strcmp(role, str2) == 0) r = LlRx;
 
     else {
-        printf("Argv[2] has an error");
+        printf("The only roles availabre are rx or tx \n");
         exit(1);
     }
 
@@ -131,14 +124,12 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
     	llopen(connectionParameters);
     	sleep(1);
     	
-    	printf("filename: %s\n", filename);
-
         FILE *pinguim = fopen(filename,"rb");
         
         if (pinguim == NULL) {
         	printf("Erro ao abrir o ficheiro\n");
-        	
-        	return;
+        	close fd;
+            exit (-1);
         }
         
         //const char *name_file = filename;
@@ -182,8 +173,8 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
             pacote_dados[0] = DADOS;
             pacote_dados[1] = seq_number; // ver melhor
             int len = fread(dados_efetivos,1,1496,pinguim);
-            printf("Numero de dados enviados: %d \n",len);
-	    unsigned char l1 = len % 256;
+            printf("Numero de bytes enviados: %d \n",len);
+	        unsigned char l1 = len % 256;
             unsigned char l2 = len / 256;
             pacote_dados[2] = l2;
             pacote_dados[3] = l1;
@@ -191,43 +182,43 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
             llwrite(pacote_dados,1500);
             switch_seq();
             sleep(1);
-            
             num_read = len;
-            
-            printf("\n\n\n\n\n\n\n\n\n\n\n pacote_dados[2]: %d, pacote_dados[3]: %d\n\n\n\n\n\n\n\n\n\n\n", pacote_dados[2], pacote_dados[3]);
         }
-
         fclose(pinguim);
         //pacote controlo End--------------------------------------
+        
         pacote_controlo[0] = END;
-        //switch_seq();
-        //llwrite(pacote_controlo,sizeof(pacote_controlo));
-        //switch_seq();
+        
+        llwrite(pacote_controlo,sizeof(pacote_controlo));
+        switch_seq();
         sleep(1);
-        free(pacote_controlo);
 
+        free(pacote_controlo);
         llclose(0);
     }
     
     else{
         FILE *pinguim2 = fopen(filename,"wb");
+
+        if (pinguim2 == NULL) {
+        	printf("Erro ao criar o ficheiro\n");
+        	close fd;
+            exit (-1);
+        }
+
         int check = 0;
         unsigned char res[2000];
         int a = 0;
         while (check == 0) {
             check = llread(res);
+
             if (check == 3) {
                 check = 0;
             }
+
             else if (check == 0) {
             	a++;
-            	int final_size = 256 * (int) final_content[2] + (int) final_content[3];
-            	
             	unsigned char final[1496];
-            	
-            	printf("\n\n\n\n\n");
-                printf("SIZE: %d\n", 256 * (int) final_content[2] + (int) final_content[3]);
-                printf("\n\n\n\n\n");
                 
                 if (final_content[0] == START){
                     switch_expected();
@@ -238,7 +229,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
                 if (final_content[0] == END){
                     switch_expected();
                     //switch_arq();
-                    check = 0;
+                    check = 0; // ver 
                     continue;
                 }
             	
@@ -248,21 +239,8 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
                 	acum++;
                 }
                 
-                printf("RECEIVED: ");
-                for (int i = 0; i < final_size; i++) {
-                    printf("%x", final[i]);
-                }
-                printf("\n");
-                
-                
-                printf("\n\n\n\n\n");
-                printf("ACUM: %d\n", acum);
-                printf("\n\n\n\n\n");
-                
-                
-                fwrite(final,1,final_size, pinguim2);
+                fwrite(final,1,sizeof final, pinguim2);
                 	
-                
                 switch_expected();
                 //switch_arq();
                 
@@ -276,8 +254,6 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
         }
         fclose(pinguim2);
     }
-    
-    
     
     // Restore the old port settings
     if (tcsetattr(fd, TCSANOW, &oldtio) == -1)
