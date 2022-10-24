@@ -28,6 +28,7 @@
 #define A_EMISSOR (0x03)
 #define A_RECETOR (0x01)
 #define DISC (0x0B)
+#define REJ (0x01)
 
 
 //Controlo 
@@ -210,6 +211,11 @@ unsigned char read_noncanonical (unsigned int size, unsigned char* res)
                 else if (trama[1] == A_RECETOR && (trama[2] == 0x85 || trama[2] == 0x05)) {
                	    printf("HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
                     return 0;
+                }
+                else if (trama[1] == A_RECETOR && trama[2] == REJ) {
+                    alarm(0); 
+    		    	alarmEnabled = FALSE;
+                    return 1;
                 }
         
             }
@@ -427,7 +433,20 @@ int llread(unsigned char *packet)
     printf("CHECK: %d\n", check);
 
     if (check == 1) {
-        printf("llread deu mal\n");
+        printf("llread deu mal. Recetor envia REJ!\n");
+        
+        unsigned char trama_rej[5];
+		trama_rej[0] = FLAG;
+		trama_rej[4] = FLAG;
+		trama_rej[1] = A_RECETOR;
+		trama_rej[2] = REJ;
+		trama_rej[3] = 0x00;
+		trama_rej[3] = checksum(trama_rej, 5);
+        
+        
+        sleep(1);
+    	write_noncanoical(trama_rej, 5); 
+        
         return 3;
     }
     
@@ -606,8 +625,9 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
         }
         
         //const char *name_file = filename;
-        //fseek(pinguim, 0L, SEEK_END);
-        long int tamanho_file = ftell(pinguim);
+        fseek(pinguim, 0L, SEEK_END);
+        long unsigned int tamanho_file = ftell(pinguim);
+        fseek(pinguim, 0L, SEEK_SET);
         printf("size of file is equal to : %ld \n",tamanho_file);
 
         //pacote controlo Start-------------------------------------
@@ -624,10 +644,6 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
         pacote_controlo[1] = SIZE_FILE;
         pacote_controlo[2] = number_octetos;
 
-        if(number_octetos == 1) tamanho_file = tamanho_file << 56;
-        if(number_octetos == 2) tamanho_file = tamanho_file << 48;
-        if(number_octetos == 4) tamanho_file = tamanho_file << 32;
-
 
         for(int i = 3; i <= (2 + number_octetos); i++){
             pacote_controlo[i] = tamanho_file;
@@ -638,8 +654,9 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
         for(int i = 0 ; i < strlen(filename);i++){
             pacote_controlo[2+number_octetos+3+i] = filename[i];
         }
-        //llwrite(pacote_controlo,sizeof(pacote_controlo));
-        //sleep(1);
+        llwrite(pacote_controlo,sizeof(pacote_controlo));
+        switch_seq();
+        sleep(1);
 
         //envio de dados -----------------------------------------
         unsigned char pacote_dados[1500];
@@ -649,8 +666,8 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
             pacote_dados[1] = seq_number; // ver melhor
             int len = fread(dados_efetivos,1,1496,pinguim);
             printf("Numero de dados enviados: %d \n",len);
-            char l1 = (char)(len / 256);
-            char l2 = (char)(len % 256);
+	    unsigned char l1 = len % 256;
+            unsigned char l2 = len / 256;
             pacote_dados[2] = l2;
             pacote_dados[3] = l1;
             memcpy(&pacote_dados[4],dados_efetivos,sizeof(dados_efetivos));
@@ -659,6 +676,8 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
             sleep(1);
             
             num_read = len;
+            
+            printf("\n\n\n\n\n\n\n\n\n\n\n pacote_dados[2]: %d, pacote_dados[3]: %d\n\n\n\n\n\n\n\n\n\n\n", pacote_dados[2], pacote_dados[3]);
 
             
         }
@@ -686,12 +705,26 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
             }
             else if (check == 0) {
             	a++;
+            	int final_size = 256 * (int) final_content[2] + (int) final_content[3];
             	
             	unsigned char final[1496];
             	
             	printf("\n\n\n\n\n");
-                printf("SIZE: %d\n", 256 * final_content[2] + final_content[3]);
+                printf("SIZE: %d\n", 256 * (int) final_content[2] + (int) final_content[3]);
                 printf("\n\n\n\n\n");
+                
+                if (final_content[0] == START){
+                    switch_expected();
+                    switch_arq();
+                    check = 0;
+                    continue;
+                }
+                if (final_content[0] == END){
+                    switch_expected();
+                    switch_arq();
+                    check = 0;
+                    continue;
+                }
             	
                 
                 int acum = 0;
@@ -703,7 +736,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
                 //unsigned char buf[acum];
             	
                 printf("RECEIVED: ");
-                for (int i = 0; i < 1496; i++) {
+                for (int i = 0; i < final_size; i++) {
                     printf("%x", final[i]);
                 }
                 printf("\n");
@@ -714,7 +747,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
                 printf("\n\n\n\n\n");
                 
                 
-                fwrite(final,1,1496, pinguim2);
+                fwrite(final,1,final_size, pinguim2);
                 	
                 
                 switch_expected();
