@@ -101,7 +101,7 @@ unsigned char read_noncanonical (unsigned int size, unsigned char* res)
     }
     
     
-    printf("bytes read: %d\n", bytes);
+    printf("RECEIVED PACKET\n");
     
     int iter = 1;
     for (int i = 1; i < 2000; i++) {
@@ -117,11 +117,7 @@ unsigned char read_noncanonical (unsigned int size, unsigned char* res)
     	trama[i] = old_trama[i];
     } 
     
-    for (int i = 0; i < iter + 1; i++) {
-    	printf("%x", trama[i]);
-    }
-    printf("\n");
-    printf("%d\n", size);
+
     	
     int new_size = iter + 1;
     
@@ -164,8 +160,6 @@ unsigned char read_noncanonical (unsigned int size, unsigned char* res)
         }
 
         else {
-            printf("checksum: %x\n", checksum(trama, 5));
-            printf("trama[2]: %x\n", trama[2]);
             if (checksum(trama, 5) == 0) {
                 if (trama[1] == A_RECETOR && trama[2] == UA) return 0; 
 
@@ -178,7 +172,6 @@ unsigned char read_noncanonical (unsigned int size, unsigned char* res)
                 else if (trama[1] == A_EMISSOR && trama[2] == UA) return 2;
 
                 else if (trama[1] == A_RECETOR && (trama[2] == 0x85 || trama[2] == 0x05)) {
-               	    printf("HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
                     return 0;
                 }
                 else if (trama[1] == A_RECETOR && trama[2] == REJ) {
@@ -192,7 +185,7 @@ unsigned char read_noncanonical (unsigned int size, unsigned char* res)
         }
     	
     }
-
+    
     return 1;
 }
 
@@ -202,16 +195,10 @@ int write_noncanoical(unsigned char* trama, unsigned int size)
 
     // Create string to send
 
-    int bytes = write(fd, trama, size);
+    write(fd, trama, size);
     
-    printf("bytes writen: %d\n", bytes);
+    printf("PACKET SENT\n");
     
-    
-    for (int i = 0; i < size; i++) {
-    	printf("%x", trama[i]);
-    }
-    
-    printf("\n");
 
     // Wait until all bytes have been written to the serial port
     sleep(1);
@@ -334,20 +321,6 @@ int llwrite(const unsigned char *buf, int bufSize)
         it++;
     }
     
-    printf("TRAMA A ENVIAR: ");
-    for (int i = 0; i < stuffed_size; i++) {
-    	printf("%x", buf_stuffed[i]);
-    }
-    printf("\n");
-    printf("\n");
-    printf("\n");
-    
-    
-    printf("TRAMA A ENVIAR: ");
-    for (int i = 0; i < n; i++) {
-    	printf("%x", trama[i]);
-    }
-    printf("\n");
 
     unsigned char* res = malloc(sizeof(char) * 5);
 
@@ -402,7 +375,6 @@ int llread(unsigned char *packet)
     unsigned char* res = malloc(sizeof(char) * 4000);
     int check = read_noncanonical(4000, res);
         
-    printf("CHECK: %d\n", check);
 
     if (check == 1) {
         printf("llread deu mal. Recetor envia REJ!\n");
@@ -475,24 +447,16 @@ int llread(unsigned char *packet)
         return 3;
     }
     
-    printf("\n\n\n\n\n\n\n\n\n\n\n\n");
-    printf("RECEIVED_TRAMA: \n");
+
    
     unsigned char buf[total_bytes_read - 5];
     int it = 0;
     for (int i = 4; i < total_bytes_read - 2; i++) {
         buf[it] = received_trama[i];
         it++;
-        printf("%x", received_trama[i]);
     }
     
-    printf("\n\n\n\n\n\n\n\n\n\n\n\n");
     
-    printf("CONTENT: ");
-    for (int i = 0; i < it; i++) {
-    	printf("%x", buf[i]);
-    }
-    printf("\n");
     
     destuff_bytes(buf, it); 
     unsigned char* content = unstuffed; 

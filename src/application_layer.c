@@ -64,8 +64,6 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
     
     fd = open(serialPort, O_RDWR | O_NOCTTY);
     
-    printf("HERE1!!!!!!!!!\n");
-    
     if (fd < 0)
     {
         perror(serialPort);
@@ -193,8 +191,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
             sleep(1);
             
             num_read = len;
-            
-            printf("\n\n\n\n\n\n\n\n\n\n\n pacote_dados[2]: %d, pacote_dados[3]: %d\n\n\n\n\n\n\n\n\n\n\n", pacote_dados[2], pacote_dados[3]);
+           
         }
 
         fclose(pinguim);
