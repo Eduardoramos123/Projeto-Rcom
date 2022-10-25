@@ -210,6 +210,7 @@ int write_noncanoical(unsigned char* trama, unsigned int size)
 
 void alarmHandler(int signal)
 {   
+    printf("TIMEOUT\n");
     alarmEnabled = FALSE;
 }
 
@@ -244,7 +245,7 @@ int llopen(LinkLayer connectionParameters)
 	if (alarmEnabled == FALSE) {
 		alarmEnabled = TRUE;
 		write_noncanoical(trama, sizeof(trama));
-		alarm(3);
+		alarm(global_var.timeout);
 		//sleep(1);
 		check = read_noncanonical(2000, res);
 	}
@@ -329,7 +330,7 @@ int llwrite(const unsigned char *buf, int bufSize)
         if (alarmEnabled == FALSE) {
             alarmEnabled = TRUE;
             write_noncanoical(trama, n);
-            alarm(3);
+            alarm(global_var.timeout);
             //sleep(1);
             check = read_noncanonical(2000, res);
         }
@@ -495,7 +496,7 @@ int llclose(int showStatistics)
 	if (alarmEnabled == FALSE) {
 		alarmEnabled = TRUE;
 		write_noncanoical(trama, 5);
-		alarm(3);
+		alarm(global_var.timeout);
 		//sleep(1);
 		check = read_noncanonical(5, res);
 	}

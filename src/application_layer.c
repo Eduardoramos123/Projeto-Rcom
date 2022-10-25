@@ -26,7 +26,7 @@ extern int total_bytes_read;
 extern unsigned char* final_content;
 extern int seq_num;
 extern int seq_num_expected;
-int seq_number = 0;
+unsigned char seq_number = 0;
 int num_read = 0;
 extern int fd;
 
@@ -178,7 +178,8 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
         unsigned char dados_efetivos[1496];
         while (!feof(pinguim)){
             pacote_dados[0] = DADOS;
-            pacote_dados[1] = seq_number; // ver melhor
+            pacote_dados[1] = seq_number; //
+            seq_number++;
             int len = fread(dados_efetivos,1,1496,pinguim);
             printf("Numero de dados enviados: %d \n",len);
 	    unsigned char l1 = len % 256;
@@ -221,10 +222,6 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
             	int final_size = 256 * (int) final_content[2] + (int) final_content[3];
             	
             	unsigned char final[1496];
-            	
-            	printf("\n\n\n\n\n");
-                printf("SIZE: %d\n", 256 * (int) final_content[2] + (int) final_content[3]);
-                printf("\n\n\n\n\n");
                 
                 if (final_content[0] == START){
                     switch_expected();
@@ -250,11 +247,6 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
                     printf("%x", final[i]);
                 }
                 printf("\n");
-                
-                
-                printf("\n\n\n\n\n");
-                printf("ACUM: %d\n", acum);
-                printf("\n\n\n\n\n");
                 
                 
                 fwrite(final,1,final_size, pinguim2);
